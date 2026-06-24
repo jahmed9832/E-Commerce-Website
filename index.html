@@ -1,0 +1,3072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three Star Corner – Your Trusted Shopping Destination</title>
+  <meta name="description" content="Three Star Corner – Your Trusted Shopping Destination. Browse, discover, and order premium products with ease." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+  <style>
+    /* ============================================================
+       BASE & CUSTOM STYLES
+    ============================================================ */
+    :root {
+      --primary:   #0F172A;
+      --secondary: #1E40AF;
+      --accent:    #F59E0B;
+      --bg:        #F8FAFC;
+      --card:      #FFFFFF;
+      --text:      #1E293B;
+      --muted:     #64748B;
+      --border:    #E2E8F0;
+    }
+
+    * { box-sizing: border-box; scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .font-display { font-family: 'Playfair Display', serif; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--secondary); border-radius: 3px; }
+
+    /* Navbar */
+    #navbar {
+      transition: box-shadow .3s, background .3s;
+      background: var(--primary);
+    }
+    #navbar.scrolled { box-shadow: 0 4px 24px rgba(0,0,0,.25); }
+
+    /* Hero Slider */
+    .hero-slide { display: none; animation: fadeSlide .6s ease; }
+    .hero-slide.active { display: flex; }
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateX(30px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* Product Cards */
+    .product-card {
+      transition: transform .25s, box-shadow .25s;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .product-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 20px 40px rgba(15,23,42,.12);
+    }
+
+    /* Badges */
+    .badge-hot  { background: #EF4444; color: #fff; }
+    .badge-new  { background: #10B981; color: #fff; }
+    .badge-sale { background: var(--accent); color: var(--primary); }
+
+    /* Stars */
+    .star-filled { color: var(--accent); }
+    .star-empty  { color: #CBD5E1; }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.55);
+      z-index: 9999;
+      backdrop-filter: blur(4px);
+    }
+    .modal-overlay.active { display: flex; align-items: center; justify-content: center; }
+    .modal-box {
+      background: #fff;
+      border-radius: 20px;
+      max-width: 900px;
+      width: 95%;
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: modalIn .3s ease;
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(.93); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    /* Admin sidebar */
+    #admin-sidebar {
+      transition: transform .3s;
+    }
+
+    /* Toast */
+    #toast-container {
+      position: fixed; bottom: 24px; right: 24px;
+      z-index: 99999;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .toast {
+      padding: 12px 20px;
+      border-radius: 10px;
+      color: #fff;
+      font-size: .875rem;
+      font-weight: 500;
+      box-shadow: 0 8px 24px rgba(0,0,0,.18);
+      animation: toastIn .3s ease;
+      min-width: 220px;
+      max-width: 340px;
+    }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .toast-success { background: #10B981; }
+    .toast-error   { background: #EF4444; }
+    .toast-info    { background: var(--secondary); }
+
+    /* Loading Spinner */
+    #page-loader {
+      position: fixed; inset: 0;
+      background: var(--primary);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100000;
+      transition: opacity .5s;
+    }
+    #page-loader.hide { opacity: 0; pointer-events: none; }
+    .spinner {
+      width: 52px; height: 52px;
+      border: 4px solid rgba(255,255,255,.15);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Back to top */
+    #back-to-top {
+      position: fixed; bottom: 80px; right: 24px;
+      width: 44px; height: 44px;
+      background: var(--secondary);
+      color: #fff;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      opacity: 0; pointer-events: none;
+      transition: opacity .3s, transform .3s;
+      z-index: 900;
+      box-shadow: 0 4px 16px rgba(30,64,175,.4);
+    }
+    #back-to-top.visible { opacity: 1; pointer-events: all; }
+    #back-to-top:hover { transform: translateY(-3px); }
+
+    /* Offer countdown */
+    .countdown-unit {
+      background: var(--primary);
+      color: #fff;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      min-width: 44px;
+      text-align: center;
+    }
+
+    /* Image gallery thumbnails */
+    .thumb {
+      width: 64px; height: 64px;
+      object-fit: cover;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color .2s;
+    }
+    .thumb.active { border-color: var(--secondary); }
+
+    /* Category pill */
+    .cat-pill {
+      padding: 6px 18px;
+      border-radius: 999px;
+      border: 1.5px solid var(--border);
+      cursor: pointer;
+      font-size: .875rem;
+      font-weight: 500;
+      transition: background .2s, color .2s, border-color .2s;
+      white-space: nowrap;
+    }
+    .cat-pill:hover, .cat-pill.active {
+      background: var(--secondary);
+      color: #fff;
+      border-color: var(--secondary);
+    }
+
+    /* Price range */
+    input[type=range] {
+      accent-color: var(--secondary);
+      width: 100%;
+    }
+
+    /* Review stars interactive */
+    .star-btn { cursor: pointer; font-size: 1.5rem; color: #CBD5E1; transition: color .15s; }
+    .star-btn.lit { color: var(--accent); }
+
+    /* Section title underline */
+    .section-title::after {
+      content: '';
+      display: block;
+      width: 52px;
+      height: 4px;
+      background: var(--accent);
+      border-radius: 2px;
+      margin-top: 8px;
+    }
+
+    /* Tailwind config override */
+    .text-primary   { color: var(--primary); }
+    .text-secondary { color: var(--secondary); }
+    .text-accent    { color: var(--accent); }
+    .bg-primary     { background: var(--primary); }
+    .bg-secondary   { background: var(--secondary); }
+    .bg-accent      { background: var(--accent); }
+    .border-accent  { border-color: var(--accent); }
+    .border-secondary { border-color: var(--secondary); }
+
+    /* Focus styles */
+    input:focus, textarea:focus, select:focus {
+      outline: 2px solid var(--secondary);
+      outline-offset: 2px;
+    }
+
+    /* Mobile menu transition */
+    #mobile-menu { transition: max-height .35s ease, opacity .35s; overflow: hidden; }
+
+    /* Admin panel */
+    #admin-panel { display: none; }
+    #main-site   { display: block; }
+
+    /* Tabs */
+    .tab-btn { transition: color .2s, border-color .2s; }
+    .tab-btn.active {
+      color: var(--secondary);
+      border-bottom: 2px solid var(--secondary);
+    }
+
+    /* Price display */
+    .price-original { text-decoration: line-through; color: var(--muted); }
+    .price-discount { color: #EF4444; font-weight: 700; }
+
+    /* Search results dropdown */
+    #search-results {
+      position: absolute;
+      top: 100%; left: 0; right: 0;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 12px 32px rgba(0,0,0,.12);
+      z-index: 500;
+      max-height: 320px;
+      overflow-y: auto;
+      display: none;
+    }
+    #search-results.open { display: block; }
+
+    /* Skeleton loader */
+    .skeleton {
+      background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 8px;
+    }
+    @keyframes shimmer {
+      from { background-position: 200% 0; }
+      to   { background-position: -200% 0; }
+    }
+
+    /* Responsive product grid */
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 20px;
+    }
+    @media (max-width: 480px) {
+      .product-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    }
+
+    /* Admin table */
+    .admin-table { width: 100%; border-collapse: collapse; }
+    .admin-table th, .admin-table td {
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: .875rem;
+    }
+    .admin-table th { background: #F1F5F9; font-weight: 600; color: var(--muted); }
+    .admin-table tbody tr:hover { background: #F8FAFC; }
+
+    /* Offer badge on card */
+    .offer-corner {
+      position: absolute; top: 10px; left: 10px;
+      background: #EF4444;
+      color: #fff;
+      font-size: .7rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    /* Whatsapp button */
+    .btn-whatsapp {
+      background: #25D366;
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: .9375rem;
+      transition: background .2s, transform .2s;
+    }
+    .btn-whatsapp:hover { background: #1EBE58; transform: translateY(-2px); }
+
+    /* Primary button */
+    .btn-primary {
+      background: var(--secondary);
+      color: #fff;
+      padding: 10px 22px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: .875rem;
+      transition: background .2s, transform .2s;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-primary:hover { background: #1e3a8a; transform: translateY(-1px); }
+
+    /* Accent button */
+    .btn-accent {
+      background: var(--accent);
+      color: var(--primary);
+      padding: 10px 22px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: .875rem;
+      transition: background .2s, transform .2s;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-accent:hover { background: #d97706; }
+
+    /* Input style */
+    .form-input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-size: .9rem;
+      font-family: inherit;
+      transition: border-color .2s;
+      background: #fff;
+    }
+    .form-input:focus { border-color: var(--secondary); outline: none; }
+
+    /* Section spacing */
+    .section { padding: 64px 0; }
+    @media (max-width: 640px) { .section { padding: 40px 0; } }
+
+    /* Newsletter input group */
+    .newsletter-group { display: flex; gap: 0; max-width: 440px; width: 100%; }
+    .newsletter-group input {
+      flex: 1;
+      padding: 12px 16px;
+      border: none;
+      border-radius: 10px 0 0 10px;
+      font-size: .9rem;
+      outline: none;
+    }
+    .newsletter-group button {
+      padding: 12px 20px;
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: 700;
+      border: none;
+      border-radius: 0 10px 10px 0;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* Filter sidebar */
+    #filter-panel {
+      position: sticky;
+      top: 80px;
+    }
+
+    @media (max-width: 1024px) {
+      #filter-panel { position: static; }
+    }
+  </style>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary:   '#0F172A',
+            secondary: '#1E40AF',
+            accent:    '#F59E0B',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-gray-50">
+
+<!-- ============================================================
+     PAGE LOADER
+============================================================ -->
+<div id="page-loader">
+  <div class="text-center">
+    <div class="spinner mx-auto mb-4"></div>
+    <p class="text-white/70 text-sm font-medium tracking-widest uppercase">Loading…</p>
+  </div>
+</div>
+
+<!-- ============================================================
+     TOAST CONTAINER
+============================================================ -->
+<div id="toast-container"></div>
+
+<!-- ============================================================
+     BACK TO TOP
+============================================================ -->
+<button id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top">
+  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6"/></svg>
+</button>
+
+<!-- ============================================================
+     MAIN SITE
+============================================================ -->
+<div id="main-site">
+
+  <!-- ============================
+       NAVBAR
+  ============================ -->
+  <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 bg-primary text-white">
+    <div class="max-w-7xl mx-auto px-4">
+      <!-- Top bar -->
+      <div class="flex items-center justify-between h-16 gap-4">
+
+        <!-- Logo -->
+        <a href="#home" class="flex items-center gap-2 shrink-0">
+          <div class="w-9 h-9 rounded-lg bg-accent flex items-center justify-center">
+            <svg width="20" height="20" fill="none" stroke="#0F172A" stroke-width="2.5" viewBox="0 0 24 24">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          </div>
+          <div>
+            <span class="font-bold text-lg leading-none block" style="font-family:'Playfair Display',serif;">Three Star</span>
+            <span class="text-accent text-xs font-semibold tracking-widest uppercase leading-none">Corner</span>
+          </div>
+        </a>
+
+        <!-- Search bar (desktop) -->
+        <div class="hidden md:flex flex-1 max-w-xl relative">
+          <input id="search-input" type="text" placeholder="Search products, brands, categories…"
+            class="w-full py-2.5 pl-4 pr-12 rounded-xl text-gray-800 text-sm bg-white focus:ring-2 focus:ring-accent outline-none"
+            oninput="handleSearch(this.value)" onfocus="openSearch()" onblur="setTimeout(closeSearch,200)"
+          />
+          <button class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-secondary">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </button>
+          <div id="search-results"></div>
+        </div>
+
+        <!-- Right actions -->
+        <div class="flex items-center gap-2">
+          <!-- Auth buttons -->
+          <div id="auth-buttons" class="hidden sm:flex items-center gap-2">
+            <button onclick="openModal('login-modal')" class="text-sm font-medium px-4 py-2 rounded-lg border border-white/30 hover:bg-white/10 transition">Login</button>
+            <button onclick="openModal('register-modal')" class="text-sm font-medium px-4 py-2 rounded-lg bg-accent text-primary font-bold hover:bg-yellow-400 transition">Sign Up</button>
+          </div>
+          <div id="user-menu" class="hidden items-center gap-2">
+            <div class="relative group">
+              <button class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.58-7 8-7s8 3 8 7"/></svg>
+                <span id="user-name-nav" class="text-sm font-medium hidden sm:block">My Account</span>
+              </button>
+              <div class="hidden group-hover:block absolute right-0 top-full mt-1 bg-white text-gray-800 rounded-xl shadow-xl border border-gray-100 min-w-[170px] py-1 z-50">
+                <a href="#" onclick="showProfile()" class="block px-4 py-2.5 text-sm hover:bg-gray-50">My Profile</a>
+                <a href="#" onclick="showOrders()" class="block px-4 py-2.5 text-sm hover:bg-gray-50">Order History</a>
+                <div id="admin-menu-link" class="hidden">
+                  <div class="border-t border-gray-100 my-1"></div>
+                  <a href="#" onclick="openAdminPanel()" class="block px-4 py-2.5 text-sm text-secondary font-semibold hover:bg-gray-50">Admin Panel</a>
+                </div>
+                <div class="border-t border-gray-100 my-1"></div>
+                <a href="#" onclick="logout()" class="block px-4 py-2.5 text-sm text-red-500 hover:bg-gray-50">Logout</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mobile menu toggle -->
+          <button id="mobile-menu-btn" onclick="toggleMobileMenu()" class="sm:hidden p-2 rounded-lg hover:bg-white/10 transition">
+            <svg id="menu-icon" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Desktop nav links -->
+      <div class="hidden md:flex items-center gap-6 pb-2 text-sm">
+        <a href="#home"        class="text-white/80 hover:text-accent transition font-medium">Home</a>
+        <a href="#products"    class="text-white/80 hover:text-accent transition font-medium">Products</a>
+        <a href="#categories"  class="text-white/80 hover:text-accent transition font-medium">Categories</a>
+        <a href="#offers"      class="text-white/80 hover:text-accent transition font-medium">Offers</a>
+        <a href="#reviews"     class="text-white/80 hover:text-accent transition font-medium">Reviews</a>
+        <a href="#about"       class="text-white/80 hover:text-accent transition font-medium">About</a>
+        <a href="#contact"     class="text-white/80 hover:text-accent transition font-medium">Contact</a>
+      </div>
+
+      <!-- Mobile menu -->
+      <div id="mobile-menu" class="sm:hidden max-h-0 opacity-0" style="">
+        <!-- Mobile search -->
+        <div class="relative mb-3">
+          <input id="mobile-search-input" type="text" placeholder="Search products…"
+            class="w-full py-2.5 pl-4 pr-10 rounded-xl text-gray-800 text-sm bg-white outline-none"
+            oninput="handleSearch(this.value)"
+          />
+          <svg class="absolute right-3 top-3 text-gray-400" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </div>
+        <div class="flex flex-col gap-1 pb-3">
+          <a href="#home"        onclick="toggleMobileMenu()" class="py-2.5 px-2 text-white/90 hover:text-accent text-sm font-medium border-b border-white/10">Home</a>
+          <a href="#products"    onclick="toggleMobileMenu()" class="py-2.5 px-2 text-white/90 hover:text-accent text-sm font-medium border-b border-white/10">Products</a>
+          <a href="#categories"  onclick="toggleMobileMenu()" class="py-2.5 px-2 text-white/90 hover:text-accent text-sm font-medium border-b border-white/10">Categories</a>
+          <a href="#offers"      onclick="toggleMobileMenu()" class="py-2.5 px-2 text-white/90 hover:text-accent text-sm font-medium border-b border-white/10">Special Offers</a>
+          <a href="#reviews"     onclick="toggleMobileMenu()" class="py-2.5 px-2 text-white/90 hover:text-accent text-sm font-medium border-b border-white/10">Reviews</a>
+          <a href="#about"       onclick="toggleMobileMenu()" class="py-2.5 px-2 text-white/90 hover:text-accent text-sm font-medium border-b border-white/10">About</a>
+          <a href="#contact"     onclick="toggleMobileMenu()" class="py-2.5 px-2 text-white/90 hover:text-accent text-sm font-medium">Contact</a>
+          <div id="mobile-auth-buttons" class="flex gap-2 mt-3">
+            <button onclick="openModal('login-modal');toggleMobileMenu()" class="flex-1 py-2 border border-white/30 rounded-lg text-sm font-medium hover:bg-white/10">Login</button>
+            <button onclick="openModal('register-modal');toggleMobileMenu()" class="flex-1 py-2 bg-accent text-primary rounded-lg text-sm font-bold">Sign Up</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Navbar spacer -->
+  <div class="h-[96px] md:h-[100px]"></div>
+
+  <!-- ============================
+       HERO SECTION
+  ============================ -->
+  <section id="home" class="relative overflow-hidden" style="background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 50%, #1e1b4b 100%); min-height: 88vh; display:flex; flex-direction:column; justify-content: center;">
+    <!-- Background decoration -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+      <div class="absolute -top-32 -right-32 w-96 h-96 rounded-full opacity-10" style="background: var(--accent); filter: blur(80px);"></div>
+      <div class="absolute -bottom-20 -left-20 w-80 h-80 rounded-full opacity-10" style="background: #6366F1; filter: blur(80px);"></div>
+    </div>
+
+    <!-- Hero slides -->
+    <div id="hero-slider" class="relative flex-1 flex items-center">
+      <div class="max-w-7xl mx-auto px-4 py-16 w-full">
+
+        <!-- Slide 1 -->
+        <div class="hero-slide active flex-col-reverse md:flex-row items-center gap-10" data-slide="0">
+          <div class="flex-1 text-center md:text-left">
+            <span class="inline-block bg-accent text-primary text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest mb-4">New Arrivals</span>
+            <h1 class="font-display text-4xl sm:text-5xl lg:text-6xl text-white leading-tight mb-4">
+              Discover Premium<br><span style="color: var(--accent);">Products</span> You'll Love
+            </h1>
+            <p class="text-white/70 text-lg mb-8 max-w-md mx-auto md:mx-0">Curated selection of top-quality products delivered to your doorstep. Shop with confidence.</p>
+            <div class="flex flex-wrap gap-3 justify-center md:justify-start">
+              <a href="#products" class="btn-accent text-base px-8 py-3.5 rounded-xl font-bold shadow-lg">Shop Now</a>
+              <a href="#about" class="px-8 py-3.5 rounded-xl border-2 border-white/30 text-white font-semibold hover:bg-white/10 transition text-base">Learn More</a>
+            </div>
+            <!-- Stats -->
+            <div class="flex gap-8 mt-10 justify-center md:justify-start">
+              <div><div class="text-2xl font-bold text-accent" id="stat-products">0+</div><div class="text-white/60 text-xs">Products</div></div>
+              <div><div class="text-2xl font-bold text-accent" id="stat-users">0+</div><div class="text-white/60 text-xs">Happy Customers</div></div>
+              <div><div class="text-2xl font-bold text-accent">5★</div><div class="text-white/60 text-xs">Rated Service</div></div>
+            </div>
+          </div>
+          <div class="flex-1 flex justify-center">
+            <div class="relative w-72 h-72 md:w-96 md:h-96">
+              <div class="absolute inset-0 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center">
+                <div class="text-center text-white/40">
+                  <svg width="80" height="80" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24" class="mx-auto mb-2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="m8 21 4-4 4 4"/><path d="M2 17h20"/></svg>
+                  <p class="text-sm">Hero Product Image</p>
+                </div>
+              </div>
+              <!-- Floating badge -->
+              <div class="absolute -top-4 -right-4 bg-accent text-primary rounded-2xl p-3 shadow-xl">
+                <div class="text-lg font-black">50%</div>
+                <div class="text-xs font-bold">OFF</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide 2 -->
+        <div class="hero-slide flex-col-reverse md:flex-row items-center gap-10" data-slide="1">
+          <div class="flex-1 text-center md:text-left">
+            <span class="inline-block bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest mb-4">Best Sellers</span>
+            <h1 class="font-display text-4xl sm:text-5xl lg:text-6xl text-white leading-tight mb-4">
+              Top Rated<br><span style="color: #34D399;">Bestsellers</span> Are Here
+            </h1>
+            <p class="text-white/70 text-lg mb-8 max-w-md mx-auto md:mx-0">Our most popular products trusted by thousands of customers. Order via WhatsApp instantly.</p>
+            <div class="flex flex-wrap gap-3 justify-center md:justify-start">
+              <a href="#products" class="px-8 py-3.5 rounded-xl bg-green-500 text-white font-bold hover:bg-green-400 transition text-base shadow-lg">View Best Sellers</a>
+            </div>
+          </div>
+          <div class="flex-1 flex justify-center">
+            <div class="w-72 h-72 md:w-80 md:h-80 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center text-white/30">
+              <svg width="80" height="80" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide 3 -->
+        <div class="hero-slide flex-col-reverse md:flex-row items-center gap-10" data-slide="2">
+          <div class="flex-1 text-center md:text-left">
+            <span class="inline-block bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest mb-4">Limited Offer</span>
+            <h1 class="font-display text-4xl sm:text-5xl lg:text-6xl text-white leading-tight mb-4">
+              Mega Sale<br><span style="color: #F87171;">Up to 70% OFF</span>
+            </h1>
+            <p class="text-white/70 text-lg mb-8 max-w-md mx-auto md:mx-0">Don't miss out on our biggest sale of the year. Limited time, limited stock!</p>
+            <div class="flex flex-wrap gap-3 justify-center md:justify-start">
+              <a href="#offers" class="px-8 py-3.5 rounded-xl bg-red-500 text-white font-bold hover:bg-red-400 transition text-base shadow-lg">Grab the Deal</a>
+            </div>
+          </div>
+          <div class="flex-1 flex justify-center">
+            <div class="w-72 h-72 md:w-80 md:h-80 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center text-white/30">
+              <svg width="80" height="80" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slider controls -->
+    <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+      <button class="hero-dot w-3 h-3 rounded-full bg-white/40 active:bg-accent transition" onclick="goToSlide(0)" id="dot-0"></button>
+      <button class="hero-dot w-3 h-3 rounded-full bg-white/40 transition" onclick="goToSlide(1)" id="dot-1"></button>
+      <button class="hero-dot w-3 h-3 rounded-full bg-white/40 transition" onclick="goToSlide(2)" id="dot-2"></button>
+    </div>
+    <button class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition" onclick="prevSlide()">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <button class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition" onclick="nextSlide()">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+  </section>
+
+  <!-- ============================
+       CATEGORIES SECTION
+  ============================ -->
+  <section id="categories" class="section bg-white">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="mb-10">
+        <h2 class="section-title font-display text-3xl font-bold text-primary">Shop by Category</h2>
+        <p class="text-muted mt-3">Find exactly what you're looking for</p>
+      </div>
+      <div id="categories-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <!-- Populated by JS -->
+        <div class="skeleton h-24 rounded-xl"></div>
+        <div class="skeleton h-24 rounded-xl"></div>
+        <div class="skeleton h-24 rounded-xl"></div>
+        <div class="skeleton h-24 rounded-xl"></div>
+        <div class="skeleton h-24 rounded-xl"></div>
+        <div class="skeleton h-24 rounded-xl"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================
+       PRODUCTS SECTION
+  ============================ -->
+  <section id="products" class="section">
+    <div class="max-w-7xl mx-auto px-4">
+      <!-- Header -->
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+        <div>
+          <h2 class="section-title font-display text-3xl font-bold text-primary">Our Products</h2>
+          <p class="text-muted mt-3">Browse our full collection</p>
+        </div>
+        <!-- Sort -->
+        <select id="sort-select" onchange="applySortFilter()" class="form-input w-auto text-sm">
+          <option value="newest">Newest First</option>
+          <option value="price_asc">Price: Low to High</option>
+          <option value="price_desc">Price: High to Low</option>
+          <option value="rating">Highest Rated</option>
+          <option value="popular">Most Popular</option>
+        </select>
+      </div>
+
+      <div class="flex flex-col lg:flex-row gap-8">
+        <!-- Filter Sidebar -->
+        <aside id="filter-panel" class="w-full lg:w-64 shrink-0">
+          <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-semibold text-base text-primary">Filters</h3>
+              <button onclick="clearFilters()" class="text-xs text-secondary hover:underline">Clear All</button>
+            </div>
+
+            <!-- Category filter -->
+            <div class="mb-5">
+              <h4 class="text-sm font-semibold text-gray-700 mb-2.5">Category</h4>
+              <div id="filter-categories" class="flex flex-col gap-1.5 text-sm text-gray-600">
+                <label class="flex items-center gap-2 cursor-pointer hover:text-secondary">
+                  <input type="radio" name="filter-cat" value="all" checked class="accent-secondary" onchange="applyFilters()"> All
+                </label>
+              </div>
+            </div>
+
+            <!-- Price filter -->
+            <div class="mb-5">
+              <h4 class="text-sm font-semibold text-gray-700 mb-2.5">Price Range</h4>
+              <input type="range" id="price-range" min="0" max="10000" value="10000" step="50" oninput="updatePriceLabel(this.value);applyFilters()" />
+              <div class="flex justify-between text-xs text-muted mt-1">
+                <span>৳0</span>
+                <span>Up to ৳<span id="price-label">10000</span></span>
+              </div>
+            </div>
+
+            <!-- Rating filter -->
+            <div class="mb-5">
+              <h4 class="text-sm font-semibold text-gray-700 mb-2.5">Minimum Rating</h4>
+              <div class="flex flex-col gap-1.5 text-sm">
+                <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="filter-rating" value="0" checked class="accent-secondary" onchange="applyFilters()"> Any</label>
+                <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="filter-rating" value="4" class="accent-secondary" onchange="applyFilters()"> ★★★★ & up</label>
+                <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="filter-rating" value="3" class="accent-secondary" onchange="applyFilters()"> ★★★ & up</label>
+              </div>
+            </div>
+
+            <!-- Availability -->
+            <div>
+              <h4 class="text-sm font-semibold text-gray-700 mb-2.5">Availability</h4>
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" id="filter-in-stock" class="accent-secondary rounded" onchange="applyFilters()"> In Stock Only
+              </label>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Products grid -->
+        <div class="flex-1">
+          <!-- Category pills -->
+          <div id="category-pills" class="flex gap-2 flex-wrap mb-5 overflow-x-auto pb-1 -mx-1 px-1">
+            <button class="cat-pill active" onclick="filterByCategory('all',this)">All Products</button>
+          </div>
+
+          <!-- Grid -->
+          <div id="products-grid" class="product-grid">
+            <!-- Skeleton placeholders -->
+            <div class="skeleton h-80 rounded-2xl"></div>
+            <div class="skeleton h-80 rounded-2xl"></div>
+            <div class="skeleton h-80 rounded-2xl"></div>
+            <div class="skeleton h-80 rounded-2xl"></div>
+            <div class="skeleton h-80 rounded-2xl"></div>
+            <div class="skeleton h-80 rounded-2xl"></div>
+          </div>
+          <div id="no-products" class="hidden text-center py-16 text-muted">
+            <svg width="64" height="64" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24" class="mx-auto mb-4 opacity-40"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <p class="text-lg">No products found</p>
+            <p class="text-sm mt-1">Try adjusting your filters</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================
+       SPECIAL OFFERS
+  ============================ -->
+  <section id="offers" class="section" style="background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 100%);">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="flex items-center justify-between mb-10">
+        <div>
+          <h2 class="font-display text-3xl font-bold text-white section-title" style="--c:#F59E0B;">Special Offers</h2>
+          <p class="text-white/60 mt-3">Limited time deals you can't miss</p>
+        </div>
+      </div>
+      <div id="offers-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Populated by JS -->
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-8 text-center">
+          <div class="text-white/40 text-5xl mb-3">🎁</div>
+          <p class="text-white/60">No special offers available right now.<br>Check back soon!</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================
+       REVIEWS SECTION
+  ============================ -->
+  <section id="reviews" class="section bg-white">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="mb-10">
+        <h2 class="section-title font-display text-3xl font-bold text-primary">Customer Reviews</h2>
+        <p class="text-muted mt-3">What our customers are saying</p>
+      </div>
+      <div id="reviews-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="skeleton h-40 rounded-2xl"></div>
+        <div class="skeleton h-40 rounded-2xl"></div>
+        <div class="skeleton h-40 rounded-2xl"></div>
+      </div>
+
+      <!-- Write a review CTA -->
+      <div class="mt-10 text-center">
+        <button onclick="openReviewModal()" class="btn-primary px-8 py-3 text-base">Write a Review</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================
+       ABOUT SECTION
+  ============================ -->
+  <section id="about" class="section" style="background: var(--bg);">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div>
+          <h2 class="section-title font-display text-3xl font-bold text-primary mb-6">About Three Star Corner</h2>
+          <p class="text-muted leading-relaxed mb-4">
+            Three Star Corner is your trusted online shopping destination. We bring you a carefully curated selection of premium products from leading brands, ensuring quality and value in every purchase.
+          </p>
+          <p class="text-muted leading-relaxed mb-6">
+            Founded with a commitment to customer satisfaction, we make shopping easy, safe, and enjoyable. Order through WhatsApp for a personalized experience.
+          </p>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
+              <div class="text-2xl font-bold text-secondary mb-1" id="about-stat-products">500+</div>
+              <div class="text-sm text-muted">Products</div>
+            </div>
+            <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
+              <div class="text-2xl font-bold text-secondary mb-1">1000+</div>
+              <div class="text-sm text-muted">Happy Customers</div>
+            </div>
+            <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
+              <div class="text-2xl font-bold text-secondary mb-1">4.8★</div>
+              <div class="text-sm text-muted">Average Rating</div>
+            </div>
+            <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
+              <div class="text-2xl font-bold text-secondary mb-1">24/7</div>
+              <div class="text-sm text-muted">Support</div>
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-primary rounded-2xl p-6 text-white">
+            <div class="text-3xl mb-3">🚀</div>
+            <h3 class="font-semibold mb-1">Fast Delivery</h3>
+            <p class="text-white/60 text-sm">Quick and reliable delivery to your doorstep</p>
+          </div>
+          <div class="bg-secondary rounded-2xl p-6 text-white mt-6">
+            <div class="text-3xl mb-3">🔒</div>
+            <h3 class="font-semibold mb-1">Secure Orders</h3>
+            <p class="text-white/60 text-sm">Safe and simple WhatsApp ordering process</p>
+          </div>
+          <div class="bg-accent rounded-2xl p-6 mt-0">
+            <div class="text-3xl mb-3">⭐</div>
+            <h3 class="font-semibold text-primary mb-1">Top Quality</h3>
+            <p class="text-primary/70 text-sm">Only the best products, verified and quality-checked</p>
+          </div>
+          <div class="bg-green-500 rounded-2xl p-6 text-white mt-6">
+            <div class="text-3xl mb-3">💬</div>
+            <h3 class="font-semibold mb-1">WhatsApp Support</h3>
+            <p class="text-white/70 text-sm">Order and get support directly via WhatsApp</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================
+       NEWSLETTER
+  ============================ -->
+  <section class="section bg-primary text-white text-center">
+    <div class="max-w-xl mx-auto px-4">
+      <div class="text-4xl mb-4">📬</div>
+      <h2 class="font-display text-3xl font-bold mb-2">Stay in the Loop</h2>
+      <p class="text-white/70 mb-6">Subscribe for exclusive deals, new arrivals, and special offers.</p>
+      <div class="newsletter-group mx-auto">
+        <input id="newsletter-email" type="email" placeholder="Enter your email…" />
+        <button onclick="subscribeNewsletter()">Subscribe</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================
+       CONTACT SECTION
+  ============================ -->
+  <section id="contact" class="section bg-white">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <div>
+          <h2 class="section-title font-display text-3xl font-bold text-primary mb-6">Get in Touch</h2>
+          <p class="text-muted mb-8">Have questions? We're here to help. Send us a message and we'll respond as soon as possible.</p>
+          <div class="flex flex-col gap-5">
+            <div class="flex items-start gap-4">
+              <div class="w-11 h-11 rounded-xl bg-secondary/10 flex items-center justify-center shrink-0">
+                <svg width="20" height="20" fill="none" stroke="#1E40AF" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.5 1.18 2 2 0 012.5 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.18 6.18l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 14.92z"/></svg>
+              </div>
+              <div>
+                <h4 class="font-semibold text-primary">WhatsApp</h4>
+                <p id="contact-whatsapp" class="text-muted text-sm">Click to chat</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-4">
+              <div class="w-11 h-11 rounded-xl bg-secondary/10 flex items-center justify-center shrink-0">
+                <svg width="20" height="20" fill="none" stroke="#1E40AF" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              </div>
+              <div>
+                <h4 class="font-semibold text-primary">Email</h4>
+                <p id="contact-email" class="text-muted text-sm">info@threestarcorner.com</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-4">
+              <div class="w-11 h-11 rounded-xl bg-secondary/10 flex items-center justify-center shrink-0">
+                <svg width="20" height="20" fill="none" stroke="#1E40AF" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              </div>
+              <div>
+                <h4 class="font-semibold text-primary">Address</h4>
+                <p id="contact-address" class="text-muted text-sm">Dhaka, Bangladesh</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Social links -->
+          <div class="flex gap-3 mt-8">
+            <a id="link-fb" href="#" target="_blank" class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white hover:bg-blue-700 transition">
+              <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
+            </a>
+            <a id="link-ig" href="#" target="_blank" class="w-10 h-10 rounded-xl bg-pink-600 flex items-center justify-center text-white hover:bg-pink-700 transition">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+            </a>
+            <a id="link-yt" href="#" target="_blank" class="w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center text-white hover:bg-red-700 transition">
+              <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M22.54 6.42a2.78 2.78 0 00-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 00-1.95 1.96A29 29 0 001 12a29 29 0 00.46 5.58a2.78 2.78 0 001.95 1.95C5.12 20 12 20 12 20s6.88 0 8.59-.47a2.78 2.78 0 001.95-1.95A29 29 0 0023 12a29 29 0 00-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="#fff"/></svg>
+            </a>
+            <a id="link-wa" href="#" target="_blank" class="w-10 h-10 rounded-xl bg-green-500 flex items-center justify-center text-white hover:bg-green-600 transition">
+              <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            </a>
+          </div>
+        </div>
+
+        <!-- Contact Form -->
+        <div class="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+          <h3 class="font-semibold text-lg text-primary mb-5">Send a Message</h3>
+          <div class="flex flex-col gap-4">
+            <input id="contact-name" type="text" placeholder="Your Name" class="form-input" />
+            <input id="contact-email-input" type="email" placeholder="Your Email" class="form-input" />
+            <input id="contact-subject" type="text" placeholder="Subject" class="form-input" />
+            <textarea id="contact-message" rows="4" placeholder="Your Message…" class="form-input resize-none"></textarea>
+            <button onclick="sendContactMessage()" class="btn-primary w-full py-3 text-base">Send Message</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================
+       FOOTER
+  ============================ -->
+  <footer class="bg-primary text-white pt-16 pb-8">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
+        <div>
+          <div class="flex items-center gap-2 mb-4">
+            <div class="w-9 h-9 rounded-lg bg-accent flex items-center justify-center">
+              <svg width="18" height="18" fill="none" stroke="#0F172A" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+            <div>
+              <span class="font-bold text-lg leading-none block" style="font-family:'Playfair Display',serif;">Three Star Corner</span>
+              <span class="text-accent text-xs">Your Trusted Shopping Destination</span>
+            </div>
+          </div>
+          <p class="text-white/60 text-sm leading-relaxed">Quality products, honest prices, and excellent service. Shop with confidence at Three Star Corner.</p>
+        </div>
+        <div>
+          <h4 class="font-semibold mb-4">Quick Links</h4>
+          <ul class="flex flex-col gap-2 text-sm text-white/60">
+            <li><a href="#home" class="hover:text-accent transition">Home</a></li>
+            <li><a href="#products" class="hover:text-accent transition">Products</a></li>
+            <li><a href="#offers" class="hover:text-accent transition">Special Offers</a></li>
+            <li><a href="#about" class="hover:text-accent transition">About Us</a></li>
+            <li><a href="#contact" class="hover:text-accent transition">Contact</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-semibold mb-4">Customer Service</h4>
+          <ul class="flex flex-col gap-2 text-sm text-white/60">
+            <li><a href="#" onclick="openModal('login-modal')" class="hover:text-accent transition">My Account</a></li>
+            <li><a href="#" onclick="showOrders()" class="hover:text-accent transition">Order History</a></li>
+            <li><a href="#contact" class="hover:text-accent transition">Help & Support</a></li>
+            <li><a href="#reviews" class="hover:text-accent transition">Reviews</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-semibold mb-4">Order via WhatsApp</h4>
+          <p class="text-white/60 text-sm mb-4">The fastest way to place your order. Just click a product and message us directly!</p>
+          <a id="footer-wa-link" href="#" target="_blank" class="btn-whatsapp text-sm">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            Chat on WhatsApp
+          </a>
+        </div>
+      </div>
+      <div class="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-white/40 text-xs">
+        <span>© 2024 Three Star Corner. All rights reserved.</span>
+        <span>Built with ❤️ for a great shopping experience</span>
+      </div>
+    </div>
+  </footer>
+
+</div><!-- end #main-site -->
+
+<!-- ============================
+     ADMIN PANEL
+============================ -->
+<div id="admin-panel" class="min-h-screen bg-gray-100">
+  <!-- Admin Topbar -->
+  <header class="bg-primary text-white px-4 py-3 flex items-center justify-between shadow-md">
+    <div class="flex items-center gap-3">
+      <button onclick="toggleAdminSidebar()" class="p-2 rounded-lg hover:bg-white/10 transition">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <span class="font-bold text-lg" style="font-family:'Playfair Display',serif;">Three Star Corner</span>
+      <span class="text-accent text-xs font-semibold px-2 py-0.5 bg-accent/20 rounded-full">Admin</span>
+    </div>
+    <button onclick="closeAdminPanel()" class="flex items-center gap-2 text-sm text-white/70 hover:text-white transition">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+      Back to Site
+    </button>
+  </header>
+
+  <div class="flex h-[calc(100vh-56px)]">
+    <!-- Sidebar -->
+    <aside id="admin-sidebar" class="w-56 bg-primary text-white flex flex-col py-6 shrink-0 overflow-y-auto">
+      <nav class="flex flex-col gap-1 px-3">
+        <button onclick="adminTab('dashboard')" class="admin-nav-btn flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white transition text-left" id="nav-dashboard">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Dashboard
+        </button>
+        <button onclick="adminTab('products')" class="admin-nav-btn flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white transition text-left" id="nav-products">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+          Products
+        </button>
+        <button onclick="adminTab('add-product')" class="admin-nav-btn flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white transition text-left" id="nav-add-product">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          Add Product
+        </button>
+        <button onclick="adminTab('categories')" class="admin-nav-btn flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white transition text-left" id="nav-categories">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          Categories
+        </button>
+        <button onclick="adminTab('offers')" class="admin-nav-btn flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white transition text-left" id="nav-offers">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          Offers
+        </button>
+        <button onclick="adminTab('reviews')" class="admin-nav-btn flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white transition text-left" id="nav-reviews">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Reviews
+        </button>
+        <button onclick="adminTab('users')" class="admin-nav-btn flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white transition text-left" id="nav-users">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          Users
+        </button>
+        <button onclick="adminTab('messages')" class="admin-nav-btn flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white transition text-left" id="nav-messages">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          Messages
+        </button>
+        <button onclick="adminTab('settings')" class="admin-nav-btn flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white transition text-left" id="nav-settings">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          Settings
+        </button>
+      </nav>
+    </aside>
+
+    <!-- Admin Content -->
+    <main class="flex-1 overflow-y-auto p-6">
+
+      <!-- Dashboard -->
+      <div id="admin-tab-dashboard" class="admin-tab-content">
+        <h2 class="text-2xl font-bold text-primary mb-6">Dashboard Overview</h2>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-3">
+              <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                <svg width="18" height="18" fill="none" stroke="#1E40AF" stroke-width="2" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/></svg>
+              </div>
+              <span class="text-xs text-muted font-medium">Total</span>
+            </div>
+            <div class="text-2xl font-bold text-primary" id="stat-total-products">0</div>
+            <div class="text-sm text-muted">Products</div>
+          </div>
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-3">
+              <div class="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
+                <svg width="18" height="18" fill="none" stroke="#10B981" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              </div>
+              <span class="text-xs text-muted font-medium">Total</span>
+            </div>
+            <div class="text-2xl font-bold text-primary" id="stat-total-users">0</div>
+            <div class="text-sm text-muted">Users</div>
+          </div>
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-3">
+              <div class="w-10 h-10 rounded-xl bg-yellow-100 flex items-center justify-center">
+                <svg width="18" height="18" fill="none" stroke="#F59E0B" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </div>
+              <span class="text-xs text-muted font-medium">Total</span>
+            </div>
+            <div class="text-2xl font-bold text-primary" id="stat-total-reviews">0</div>
+            <div class="text-sm text-muted">Reviews</div>
+          </div>
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-3">
+              <div class="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+                <svg width="18" height="18" fill="none" stroke="#7C3AED" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              </div>
+              <span class="text-xs text-muted font-medium">Total</span>
+            </div>
+            <div class="text-2xl font-bold text-primary" id="stat-total-messages">0</div>
+            <div class="text-sm text-muted">Messages</div>
+          </div>
+        </div>
+        <!-- Recent Products table -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+          <h3 class="font-semibold text-base text-primary mb-4">Recent Products</h3>
+          <div class="overflow-x-auto">
+            <table class="admin-table" id="dash-recent-products">
+              <thead><tr><th>Name</th><th>Code</th><th>Price</th><th>Stock</th><th>Status</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Products Tab -->
+      <div id="admin-tab-products" class="admin-tab-content hidden">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-2xl font-bold text-primary">All Products</h2>
+          <button onclick="adminTab('add-product')" class="btn-primary">+ Add Product</button>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div class="p-4 border-b border-gray-100">
+            <input type="text" placeholder="Search products…" id="admin-product-search" oninput="filterAdminProducts(this.value)" class="form-input max-w-sm text-sm" />
+          </div>
+          <div class="overflow-x-auto">
+            <table class="admin-table" id="admin-products-table">
+              <thead><tr><th>Image</th><th>Name</th><th>Code</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="admin-products-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add/Edit Product Tab -->
+      <div id="admin-tab-add-product" class="admin-tab-content hidden">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-2xl font-bold text-primary" id="product-form-title">Add New Product</h2>
+          <button onclick="resetProductForm()" class="text-sm text-muted hover:text-primary border border-gray-200 px-3 py-1.5 rounded-lg">Reset Form</button>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <input type="hidden" id="edit-product-id" />
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
+              <input type="text" id="p-name" class="form-input" placeholder="Enter product name" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Product Code *</label>
+              <input type="text" id="p-code" class="form-input" placeholder="e.g. TSC-001" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+              <input type="text" id="p-category" class="form-input" placeholder="e.g. Electronics" list="category-datalist" />
+              <datalist id="category-datalist"></datalist>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Brand</label>
+              <input type="text" id="p-brand" class="form-input" placeholder="e.g. Samsung" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Regular Price (৳) *</label>
+              <input type="number" id="p-price" class="form-input" placeholder="0" min="0" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Discount Price (৳)</label>
+              <input type="number" id="p-discount" class="form-input" placeholder="0 (leave empty for no discount)" min="0" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
+              <input type="number" id="p-stock" class="form-input" placeholder="0" min="0" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select id="p-status" class="form-input">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="out_of_stock">Out of Stock</option>
+              </select>
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea id="p-description" rows="4" class="form-input resize-none" placeholder="Product description…"></textarea>
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Tags (comma separated)</label>
+              <input type="text" id="p-tags" class="form-input" placeholder="e.g. new, sale, popular" />
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Product Images</label>
+              <div class="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center cursor-pointer hover:border-secondary transition" onclick="document.getElementById('p-images').click()">
+                <svg width="40" height="40" fill="none" stroke="#94A3B8" stroke-width="1.5" viewBox="0 0 24 24" class="mx-auto mb-2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                <p class="text-sm text-muted">Click to upload images</p>
+                <p class="text-xs text-muted mt-1">PNG, JPG, WebP up to 5MB each</p>
+              </div>
+              <input type="file" id="p-images" multiple accept="image/*" class="hidden" onchange="previewImages(this)" />
+              <div id="image-preview" class="flex gap-3 flex-wrap mt-3"></div>
+            </div>
+            <!-- Image URL alternative -->
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Or enter image URLs (one per line)</label>
+              <textarea id="p-image-urls" rows="3" class="form-input resize-none text-sm" placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg"></textarea>
+            </div>
+          </div>
+          <div class="flex gap-3 mt-6">
+            <button onclick="saveProduct()" class="btn-primary px-8 py-3 text-base" id="save-product-btn">Save Product</button>
+            <button onclick="adminTab('products')" class="px-6 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Categories Tab -->
+      <div id="admin-tab-categories" class="admin-tab-content hidden">
+        <h2 class="text-2xl font-bold text-primary mb-6">Manage Categories</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h3 class="font-semibold mb-4">Add Category</h3>
+            <div class="flex flex-col gap-3">
+              <input type="text" id="cat-name" class="form-input" placeholder="Category name" />
+              <input type="text" id="cat-icon" class="form-input" placeholder="Emoji icon (e.g. 📱)" />
+              <button onclick="saveCategory()" class="btn-primary">Add Category</button>
+            </div>
+          </div>
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h3 class="font-semibold mb-4">Existing Categories</h3>
+            <div id="admin-categories-list" class="flex flex-col gap-2"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Offers Tab -->
+      <div id="admin-tab-offers" class="admin-tab-content hidden">
+        <h2 class="text-2xl font-bold text-primary mb-6">Special Offers</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h3 class="font-semibold mb-4">Add/Edit Offer</h3>
+            <div class="flex flex-col gap-3">
+              <input type="hidden" id="offer-id" />
+              <input type="text" id="offer-title" class="form-input" placeholder="Offer title" />
+              <textarea id="offer-description" rows="3" class="form-input resize-none" placeholder="Offer description"></textarea>
+              <input type="number" id="offer-discount" class="form-input" placeholder="Discount %" min="0" max="100" />
+              <input type="datetime-local" id="offer-expiry" class="form-input" />
+              <input type="text" id="offer-banner" class="form-input" placeholder="Banner image URL (optional)" />
+              <button onclick="saveOffer()" class="btn-primary">Save Offer</button>
+            </div>
+          </div>
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h3 class="font-semibold mb-4">Active Offers</h3>
+            <div id="admin-offers-list" class="flex flex-col gap-3"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reviews Tab -->
+      <div id="admin-tab-reviews" class="admin-tab-content hidden">
+        <h2 class="text-2xl font-bold text-primary mb-6">Customer Reviews</h2>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="admin-table">
+              <thead><tr><th>User</th><th>Product</th><th>Rating</th><th>Review</th><th>Date</th><th>Action</th></tr></thead>
+              <tbody id="admin-reviews-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Users Tab -->
+      <div id="admin-tab-users" class="admin-tab-content hidden">
+        <h2 class="text-2xl font-bold text-primary mb-6">Registered Users</h2>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="admin-table">
+              <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Address</th><th>Role</th><th>Joined</th></tr></thead>
+              <tbody id="admin-users-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Messages Tab -->
+      <div id="admin-tab-messages" class="admin-tab-content hidden">
+        <h2 class="text-2xl font-bold text-primary mb-6">Contact Messages</h2>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="admin-table">
+              <thead><tr><th>Name</th><th>Email</th><th>Subject</th><th>Message</th><th>Date</th><th>Action</th></tr></thead>
+              <tbody id="admin-messages-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Tab -->
+      <div id="admin-tab-settings" class="admin-tab-content hidden">
+        <h2 class="text-2xl font-bold text-primary mb-6">Site Settings</h2>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-2xl">
+          <div class="flex flex-col gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Website Name</label>
+              <input type="text" id="set-name" class="form-input" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">WhatsApp Number (with country code)</label>
+              <input type="text" id="set-whatsapp" class="form-input" placeholder="e.g. 8801XXXXXXXXX" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input type="email" id="set-email" class="form-input" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+              <input type="text" id="set-address" class="form-input" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Facebook URL</label>
+              <input type="url" id="set-facebook" class="form-input" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Instagram URL</label>
+              <input type="url" id="set-instagram" class="form-input" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">YouTube URL</label>
+              <input type="url" id="set-youtube" class="form-input" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Admin Email(s) (comma separated)</label>
+              <input type="text" id="set-admins" class="form-input" placeholder="admin@email.com, admin2@email.com" />
+            </div>
+            <button onclick="saveSettings()" class="btn-primary px-8 py-3 mt-2">Save Settings</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div><!-- end #admin-panel -->
+
+<!-- ============================================================
+     MODALS
+============================================================ -->
+
+<!-- Login Modal -->
+<div id="login-modal" class="modal-overlay">
+  <div class="modal-box max-w-md p-8">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="font-display text-2xl font-bold text-primary">Welcome Back</h3>
+      <button onclick="closeModal('login-modal')" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="flex flex-col gap-4">
+      <input type="email" id="login-email" class="form-input" placeholder="Email address" />
+      <input type="password" id="login-password" class="form-input" placeholder="Password" />
+      <button onclick="loginUser()" class="btn-primary py-3 text-base">Login</button>
+      <div class="text-center text-sm text-muted">
+        <button onclick="openModal('forgot-modal');closeModal('login-modal')" class="text-secondary hover:underline">Forgot password?</button>
+      </div>
+      <div class="border-t border-gray-100 pt-4 text-center text-sm text-muted">
+        Don't have an account?
+        <button onclick="openModal('register-modal');closeModal('login-modal')" class="text-secondary font-semibold hover:underline ml-1">Sign Up</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Register Modal -->
+<div id="register-modal" class="modal-overlay">
+  <div class="modal-box max-w-md p-8">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="font-display text-2xl font-bold text-primary">Create Account</h3>
+      <button onclick="closeModal('register-modal')" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="flex flex-col gap-4">
+      <input type="text" id="reg-name" class="form-input" placeholder="Full Name" />
+      <input type="email" id="reg-email" class="form-input" placeholder="Email address" />
+      <input type="tel" id="reg-phone" class="form-input" placeholder="Phone Number" />
+      <input type="text" id="reg-address" class="form-input" placeholder="Address" />
+      <input type="password" id="reg-password" class="form-input" placeholder="Password (min 6 chars)" />
+      <button onclick="registerUser()" class="btn-primary py-3 text-base">Create Account</button>
+      <div class="border-t border-gray-100 pt-4 text-center text-sm text-muted">
+        Already have an account?
+        <button onclick="openModal('login-modal');closeModal('register-modal')" class="text-secondary font-semibold hover:underline ml-1">Login</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Forgot Password Modal -->
+<div id="forgot-modal" class="modal-overlay">
+  <div class="modal-box max-w-md p-8">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="font-display text-2xl font-bold text-primary">Reset Password</h3>
+      <button onclick="closeModal('forgot-modal')" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p class="text-muted text-sm mb-4">Enter your email and we'll send a reset link.</p>
+    <div class="flex flex-col gap-4">
+      <input type="email" id="forgot-email" class="form-input" placeholder="Email address" />
+      <button onclick="resetPassword()" class="btn-primary py-3">Send Reset Link</button>
+      <button onclick="openModal('login-modal');closeModal('forgot-modal')" class="text-sm text-secondary hover:underline text-center">Back to Login</button>
+    </div>
+  </div>
+</div>
+
+<!-- Product Detail Modal -->
+<div id="product-detail-modal" class="modal-overlay">
+  <div class="modal-box w-full" style="max-width:860px;">
+    <div class="flex items-center justify-between p-5 border-b border-gray-100">
+      <h3 class="font-semibold text-lg text-primary" id="detail-modal-title">Product Details</h3>
+      <button onclick="closeModal('product-detail-modal')" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="product-detail-content" class="p-6">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- Review Modal -->
+<div id="review-modal" class="modal-overlay">
+  <div class="modal-box max-w-lg p-8">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="font-display text-2xl font-bold text-primary">Write a Review</h3>
+      <button onclick="closeModal('review-modal')" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="flex flex-col gap-4">
+      <input type="hidden" id="review-product-id" />
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Product (optional)</label>
+        <select id="review-product-select" class="form-input">
+          <option value="">General Review</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Your Rating</label>
+        <div class="flex gap-1" id="star-rating-input">
+          <span class="star-btn" data-val="1" onclick="setRating(1)">★</span>
+          <span class="star-btn" data-val="2" onclick="setRating(2)">★</span>
+          <span class="star-btn" data-val="3" onclick="setRating(3)">★</span>
+          <span class="star-btn" data-val="4" onclick="setRating(4)">★</span>
+          <span class="star-btn" data-val="5" onclick="setRating(5)">★</span>
+        </div>
+        <input type="hidden" id="review-rating" value="0" />
+      </div>
+      <input type="text" id="review-name" class="form-input" placeholder="Your Name" />
+      <textarea id="review-text" rows="4" class="form-input resize-none" placeholder="Share your experience…"></textarea>
+      <button onclick="submitReview()" class="btn-primary py-3 text-base">Submit Review</button>
+    </div>
+  </div>
+</div>
+
+<!-- Order Modal -->
+<div id="order-modal" class="modal-overlay">
+  <div class="modal-box max-w-md p-8">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="font-display text-2xl font-bold text-primary">Place Your Order</h3>
+      <button onclick="closeModal('order-modal')" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="order-product-info" class="bg-gray-50 rounded-xl p-4 mb-5 text-sm"></div>
+    <div class="flex flex-col gap-4">
+      <input type="hidden" id="order-product-id" />
+      <input type="text" id="order-name" class="form-input" placeholder="Your Full Name *" />
+      <input type="tel" id="order-phone" class="form-input" placeholder="Your Phone Number *" />
+      <textarea id="order-address" rows="2" class="form-input resize-none" placeholder="Delivery Address *"></textarea>
+      <input type="number" id="order-qty" class="form-input" placeholder="Quantity" value="1" min="1" />
+      <p class="text-xs text-muted">Your order will be sent via WhatsApp for confirmation.</p>
+      <button onclick="placeWhatsAppOrder()" class="btn-whatsapp w-full justify-center py-3 text-base">
+        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        Send Order via WhatsApp
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Profile Modal -->
+<div id="profile-modal" class="modal-overlay">
+  <div class="modal-box max-w-md p-8">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="font-display text-2xl font-bold text-primary">My Profile</h3>
+      <button onclick="closeModal('profile-modal')" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="flex flex-col gap-4">
+      <input type="text" id="profile-name" class="form-input" placeholder="Full Name" />
+      <input type="email" id="profile-email" class="form-input" readonly />
+      <input type="tel" id="profile-phone" class="form-input" placeholder="Phone" />
+      <input type="text" id="profile-address" class="form-input" placeholder="Address" />
+      <button onclick="updateProfile()" class="btn-primary py-3">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Orders Modal -->
+<div id="orders-modal" class="modal-overlay">
+  <div class="modal-box max-w-lg p-8">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="font-display text-2xl font-bold text-primary">Order History</h3>
+      <button onclick="closeModal('orders-modal')" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p class="text-sm text-muted mb-4">Since orders are placed via WhatsApp, your recent order attempts are listed here.</p>
+    <div id="orders-list" class="flex flex-col gap-3"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     JAVASCRIPT
+============================================================ -->
+<script>
+// ============================================================
+// CONFIG — EDIT ONLY THIS SECTION FOR CUSTOMIZATION
+// ============================================================
+const CONFIG = {
+  WEBSITE_NAME:        "Three Star Corner",
+  WHATSAPP_NUMBER:     "8801XXXXXXXXX",      // <-- Replace with real number
+  FIREBASE_CONFIG: {
+    apiKey:            "YOUR_API_KEY",
+    authDomain:        "YOUR_PROJECT.firebaseapp.com",
+    projectId:         "YOUR_PROJECT_ID",
+    storageBucket:     "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId:             "YOUR_APP_ID"
+  },
+  EMAILJS_PUBLIC_KEY:  "",                   // <-- EmailJS public key
+  EMAILJS_SERVICE_ID:  "",                   // <-- EmailJS service ID
+  EMAILJS_TEMPLATE_ID: "",                   // <-- EmailJS template ID
+};
+
+// ============================================================
+// DEMO DATA — used when Firebase is not configured
+// ============================================================
+const DEMO_PRODUCTS = [
+  {
+    id:"demo1", name:"Premium Wireless Headphones", code:"TSC-001", category:"Electronics",
+    brand:"AudioPro", description:"High-quality wireless headphones with noise cancellation, 30hr battery life, and premium sound quality. Perfect for music lovers and professionals.",
+    price:3500, discountPrice:2800, stock:15, images:[], rating:4.5, reviewCount:12,
+    tags:["new","popular"], status:"active", dateAdded: new Date().toISOString()
+  },
+  {
+    id:"demo2", name:"Smart Fitness Watch", code:"TSC-002", category:"Electronics",
+    brand:"FitTech", description:"Track your health and fitness goals with this smart watch. Features heart rate monitoring, GPS, sleep tracking, and 7-day battery.",
+    price:5200, discountPrice:4100, stock:8, images:[], rating:4.8, reviewCount:24,
+    tags:["bestseller","new"], status:"active", dateAdded: new Date().toISOString()
+  },
+  {
+    id:"demo3", name:"Leather Wallet (Slim)", code:"TSC-003", category:"Fashion",
+    brand:"StyleCraft", description:"Genuine leather slim wallet with multiple card slots and a cash compartment. Minimalist design for the modern professional.",
+    price:850, discountPrice:0, stock:30, images:[], rating:4.3, reviewCount:8,
+    tags:["popular"], status:"active", dateAdded: new Date().toISOString()
+  },
+  {
+    id:"demo4", name:"Portable Bluetooth Speaker", code:"TSC-004", category:"Electronics",
+    brand:"SoundBlast", description:"Waterproof portable speaker with 360° sound, 20hr battery, and deep bass. Perfect for outdoor adventures.",
+    price:2200, discountPrice:1750, stock:20, images:[], rating:4.6, reviewCount:19,
+    tags:["sale","popular"], status:"active", dateAdded: new Date().toISOString()
+  },
+  {
+    id:"demo5", name:"Ceramic Coffee Mug Set", code:"TSC-005", category:"Home & Kitchen",
+    brand:"HomeBliss", description:"Set of 4 handcrafted ceramic mugs in elegant matte finish. Microwave and dishwasher safe. Ideal for home or gifting.",
+    price:1200, discountPrice:950, stock:25, images:[], rating:4.2, reviewCount:6,
+    tags:["popular"], status:"active", dateAdded: new Date().toISOString()
+  },
+  {
+    id:"demo6", name:"Running Sports Shoes", code:"TSC-006", category:"Footwear",
+    brand:"SpeedRun", description:"Lightweight running shoes with memory foam insole, breathable mesh upper, and non-slip rubber sole. Available in multiple sizes.",
+    price:3800, discountPrice:2900, stock:12, images:[], rating:4.7, reviewCount:31,
+    tags:["new","bestseller"], status:"active", dateAdded: new Date().toISOString()
+  },
+  {
+    id:"demo7", name:"Stainless Steel Water Bottle", code:"TSC-007", category:"Home & Kitchen",
+    brand:"HydroLife", description:"1L insulated water bottle keeps drinks cold 24hrs and hot 12hrs. BPA-free, leak-proof lid with carrying handle.",
+    price:650, discountPrice:0, stock:50, images:[], rating:4.4, reviewCount:15,
+    tags:["popular"], status:"active", dateAdded: new Date().toISOString()
+  },
+  {
+    id:"demo8", name:"Men's Formal Shirt", code:"TSC-008", category:"Fashion",
+    brand:"DressCode", description:"Premium cotton formal shirt with slim fit design. Available in multiple colors. Perfect for office wear and formal occasions.",
+    price:1500, discountPrice:1200, stock:40, images:[], rating:4.1, reviewCount:9,
+    tags:["new"], status:"active", dateAdded: new Date().toISOString()
+  }
+];
+
+const DEMO_CATEGORIES = [
+  {id:"c1",name:"Electronics",icon:"📱"},
+  {id:"c2",name:"Fashion",icon:"👗"},
+  {id:"c3",name:"Home & Kitchen",icon:"🏠"},
+  {id:"c4",name:"Footwear",icon:"👟"},
+  {id:"c5",name:"Books",icon:"📚"},
+  {id:"c6",name:"Sports",icon:"⚽"},
+];
+
+const DEMO_REVIEWS = [
+  {id:"r1",userName:"Rahim Ahmed",rating:5,text:"Excellent products and super fast delivery! Highly recommended.",productName:"Smart Fitness Watch",date:"2024-01-15"},
+  {id:"r2",userName:"Fatima Begum",rating:5,text:"Very satisfied with my purchase. The quality exceeded my expectations.",productName:"Running Sports Shoes",date:"2024-01-20"},
+  {id:"r3",userName:"Karim Hossain",rating:4,text:"Good service, quick WhatsApp response. Will order again!",productName:"Portable Bluetooth Speaker",date:"2024-01-25"},
+];
+
+const DEMO_OFFERS = [
+  {id:"o1",title:"Mega Summer Sale",description:"Get up to 30% off on all electronics and fashion items!",discount:30,expiry: new Date(Date.now()+86400000*3).toISOString()},
+  {id:"o2",title:"New Customer Deal",description:"First order? Enjoy exclusive discounts on your first purchase.",discount:15,expiry: new Date(Date.now()+86400000*7).toISOString()},
+];
+
+// ============================================================
+// STATE
+// ============================================================
+let state = {
+  user: null,
+  userDoc: null,
+  isAdmin: false,
+  products: [],
+  categories: [],
+  reviews: [],
+  offers: [],
+  settings: {},
+  filteredProducts: [],
+  currentCategory: 'all',
+  currentSlide: 0,
+  selectedRating: 0,
+  currentOrderProduct: null,
+  orders: [],
+  allAdmins: [],
+  useDemo: false,
+};
+
+// ============================================================
+// FIREBASE INIT
+// ============================================================
+let db, auth, storage;
+let fbReady = false;
+
+function initFirebase() {
+  try {
+    if (CONFIG.FIREBASE_CONFIG.apiKey && CONFIG.FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY') {
+      firebase.initializeApp(CONFIG.FIREBASE_CONFIG);
+      db      = firebase.firestore();
+      auth    = firebase.auth();
+      storage = firebase.storage();
+      fbReady = true;
+      setupAuthListener();
+      loadAllData();
+    } else {
+      // Demo mode
+      state.useDemo = true;
+      console.info('[TSC] Running in DEMO mode. Add Firebase config to enable full features.');
+      loadDemoData();
+    }
+  } catch(e) {
+    state.useDemo = true;
+    loadDemoData();
+  }
+}
+
+function loadDemoData() {
+  state.products          = DEMO_PRODUCTS;
+  state.filteredProducts  = DEMO_PRODUCTS;
+  state.categories        = DEMO_CATEGORIES;
+  state.reviews           = DEMO_REVIEWS;
+  state.offers            = DEMO_OFFERS;
+  state.settings          = { whatsappNumber: CONFIG.WHATSAPP_NUMBER };
+  renderAll();
+  hideSplash();
+}
+
+// ============================================================
+// FIREBASE DATA LOADING
+// ============================================================
+async function loadAllData() {
+  try {
+    await Promise.all([
+      loadProducts(),
+      loadCategories(),
+      loadReviews(),
+      loadOffers(),
+      loadSettings(),
+    ]);
+    renderAll();
+  } catch(e) {
+    console.warn('Firebase load error, using demo data:', e);
+    state.useDemo = true;
+    loadDemoData();
+  } finally {
+    hideSplash();
+  }
+}
+
+async function loadProducts() {
+  const snap = await db.collection('products').orderBy('dateAdded','desc').get();
+  state.products = snap.docs.map(d => ({id:d.id,...d.data()}));
+  if(!state.products.length) state.products = DEMO_PRODUCTS;
+  state.filteredProducts = [...state.products];
+}
+
+async function loadCategories() {
+  const snap = await db.collection('categories').get();
+  state.categories = snap.docs.map(d=>({id:d.id,...d.data()}));
+  if(!state.categories.length) {
+    // Auto-generate from products
+    const cats = [...new Set(state.products.map(p=>p.category).filter(Boolean))];
+    state.categories = cats.map((c,i)=>({id:`cat${i}`,name:c,icon:'🏷️'}));
+  }
+}
+
+async function loadReviews() {
+  const snap = await db.collection('reviews').orderBy('date','desc').limit(20).get();
+  state.reviews = snap.docs.map(d=>({id:d.id,...d.data()}));
+  if(!state.reviews.length) state.reviews = DEMO_REVIEWS;
+}
+
+async function loadOffers() {
+  const snap = await db.collection('offers').get();
+  state.offers = snap.docs.map(d=>({id:d.id,...d.data()}));
+  if(!state.offers.length) state.offers = DEMO_OFFERS;
+}
+
+async function loadSettings() {
+  const doc = await db.collection('settings').doc('main').get();
+  if(doc.exists) {
+    state.settings = doc.data();
+    if(state.settings.admins) state.allAdmins = state.settings.admins;
+  }
+}
+
+// ============================================================
+// RENDER ALL
+// ============================================================
+function renderAll() {
+  renderCategories();
+  renderCategoryPills();
+  renderProducts(state.filteredProducts);
+  renderOffers();
+  renderReviews();
+  updateSiteLinks();
+  updateStats();
+}
+
+// ============================================================
+// CATEGORIES
+// ============================================================
+function renderCategories() {
+  const grid = document.getElementById('categories-grid');
+  if(!state.categories.length) { grid.innerHTML='<p class="text-muted col-span-full text-center py-4">No categories found.</p>'; return; }
+  grid.innerHTML = state.categories.map(cat => `
+    <button onclick="filterByCategory('${escHtml(cat.name)}',null)" class="flex flex-col items-center gap-2 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 cursor-pointer group">
+      <div class="text-3xl group-hover:scale-110 transition-transform">${cat.icon||'🏷️'}</div>
+      <span class="text-sm font-medium text-gray-700 text-center">${escHtml(cat.name)}</span>
+    </button>
+  `).join('');
+}
+
+function renderCategoryPills() {
+  const container = document.getElementById('category-pills');
+  const cats = [...new Set(state.products.map(p=>p.category).filter(Boolean))];
+  const pills = ['All Products',...cats].map((c,i) => `
+    <button class="cat-pill${i===0?' active':''}" onclick="filterByCategory('${i===0?'all':c}',this)">${c}</button>
+  `).join('');
+  container.innerHTML = pills;
+  // Also update filter sidebar
+  const filterCats = document.getElementById('filter-categories');
+  filterCats.innerHTML = `<label class="flex items-center gap-2 cursor-pointer hover:text-secondary"><input type="radio" name="filter-cat" value="all" checked class="accent-secondary" onchange="applyFilters()"> All</label>`
+    + cats.map(c=>`<label class="flex items-center gap-2 cursor-pointer hover:text-secondary"><input type="radio" name="filter-cat" value="${escHtml(c)}" class="accent-secondary" onchange="applyFilters()"> ${escHtml(c)}</label>`).join('');
+}
+
+// ============================================================
+// PRODUCTS RENDERING
+// ============================================================
+function renderProducts(products) {
+  const grid = document.getElementById('products-grid');
+  const noP  = document.getElementById('no-products');
+  if(!products || !products.length) {
+    grid.innerHTML = '';
+    noP.classList.remove('hidden');
+    return;
+  }
+  noP.classList.add('hidden');
+  grid.innerHTML = products.map(p => productCardHtml(p)).join('');
+  updateStats();
+}
+
+function productCardHtml(p) {
+  const img    = (p.images&&p.images.length) ? p.images[0] : null;
+  const price  = p.discountPrice && p.discountPrice>0 ? p.discountPrice : p.price;
+  const hasDisc= p.discountPrice && p.discountPrice>0 && p.discountPrice < p.price;
+  const discount= hasDisc ? Math.round((1-p.discountPrice/p.price)*100) : 0;
+  const stars  = renderStars(p.rating||0);
+  const isOOS  = p.stock===0 || p.status==='out_of_stock';
+
+  return `
+  <div class="product-card relative flex flex-col" id="card-${p.id}">
+    ${hasDisc ? `<div class="offer-corner">-${discount}%</div>` : ''}
+    ${p.tags&&p.tags.includes('new') ? `<div style="position:absolute;top:10px;right:10px;z-index:2;" class="badge-new text-xs font-bold px-2 py-0.5 rounded-full">NEW</div>` : ''}
+    <!-- Image -->
+    <div class="relative overflow-hidden" style="height:200px;background:#F1F5F9;">
+      ${img
+        ? `<img src="${escHtml(img)}" alt="${escHtml(p.name)}" class="w-full h-full object-cover hover:scale-105 transition-transform duration-300" onerror="this.parentElement.innerHTML=placeholderImg()" />`
+        : `<div class="w-full h-full flex items-center justify-center text-gray-300">${placeholderImg()}</div>`
+      }
+    </div>
+    <!-- Info -->
+    <div class="p-4 flex flex-col flex-1">
+      <div class="text-xs text-muted mb-1 font-medium tracking-wider uppercase">${escHtml(p.code||'')}</div>
+      <h3 class="font-semibold text-gray-800 text-sm leading-snug mb-1 line-clamp-2">${escHtml(p.name)}</h3>
+      <div class="flex items-center gap-1 text-xs mb-2">${stars}<span class="text-muted ml-1">(${p.reviewCount||0})</span></div>
+      <!-- Price -->
+      <div class="flex items-center gap-2 mt-auto mb-3">
+        <span class="text-base font-bold text-primary">৳${price.toLocaleString()}</span>
+        ${hasDisc ? `<span class="price-original text-xs">৳${p.price.toLocaleString()}</span>` : ''}
+      </div>
+      <!-- Stock -->
+      <div class="text-xs mb-3 ${isOOS?'text-red-500':'text-green-600'} font-medium">
+        ${isOOS ? '✗ Out of Stock' : `✓ In Stock (${p.stock})`}
+      </div>
+      <!-- Buttons -->
+      <div class="flex gap-2">
+        <button onclick="viewProduct('${p.id}')" class="flex-1 py-2 px-3 text-xs font-semibold rounded-lg border border-secondary text-secondary hover:bg-secondary hover:text-white transition">View Details</button>
+        <button onclick="openOrderModal('${p.id}')" ${isOOS?'disabled':''} class="flex-1 py-2 px-3 text-xs font-semibold rounded-lg bg-green-500 text-white hover:bg-green-600 transition ${isOOS?'opacity-50 cursor-not-allowed':''}">
+          Order Now
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function placeholderImg() {
+  return `<svg width="60" height="60" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+}
+
+function renderStars(rating, max=5) {
+  let s = '';
+  for(let i=1;i<=max;i++) {
+    s += `<svg class="inline" width="12" height="12" viewBox="0 0 24 24" fill="${i<=Math.round(rating)?'#F59E0B':'#CBD5E1'}" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+  }
+  return s;
+}
+
+// ============================================================
+// PRODUCT DETAIL MODAL
+// ============================================================
+function viewProduct(id) {
+  const p = state.products.find(x=>x.id===id);
+  if(!p) return;
+  document.getElementById('detail-modal-title').textContent = p.name;
+
+  const price   = p.discountPrice && p.discountPrice>0 ? p.discountPrice : p.price;
+  const hasDisc = p.discountPrice && p.discountPrice>0 && p.discountPrice < p.price;
+  const imgs    = (p.images&&p.images.length) ? p.images : [];
+
+  const productReviews = state.reviews.filter(r=>r.productId===id || r.productName===p.name);
+
+  document.getElementById('product-detail-content').innerHTML = `
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <!-- Images -->
+      <div>
+        <div id="main-img" class="w-full h-72 rounded-2xl overflow-hidden bg-gray-100 flex items-center justify-center mb-3">
+          ${imgs.length
+            ? `<img id="main-img-el" src="${escHtml(imgs[0])}" alt="${escHtml(p.name)}" class="w-full h-full object-cover" />`
+            : `<div class="text-gray-300">${placeholderImg()}</div>`
+          }
+        </div>
+        ${imgs.length>1 ? `<div class="flex gap-2 flex-wrap">${imgs.map((img,i)=>`<img src="${escHtml(img)}" class="thumb${i===0?' active':''}" onclick="switchImg('${escHtml(img)}',this)" />`).join('')}</div>` : ''}
+      </div>
+      <!-- Details -->
+      <div>
+        <div class="text-xs text-muted font-medium tracking-widest uppercase mb-1">${escHtml(p.category||'')} · ${escHtml(p.brand||'')}</div>
+        <h2 class="font-display text-2xl font-bold text-primary mb-2">${escHtml(p.name)}</h2>
+        <div class="flex items-center gap-2 mb-3">${renderStars(p.rating||0,5)}<span class="text-sm text-muted">${(p.rating||0).toFixed(1)} (${p.reviewCount||0} reviews)</span></div>
+        <div class="text-xs font-mono text-muted mb-4">Code: <span class="text-secondary font-bold">${escHtml(p.code||'')}</span></div>
+        <div class="flex items-center gap-3 mb-4">
+          <span class="text-3xl font-black text-primary">৳${price.toLocaleString()}</span>
+          ${hasDisc?`<span class="price-original text-base">৳${p.price.toLocaleString()}</span><span class="badge-sale text-xs font-bold px-2 py-1 rounded-full">-${Math.round((1-p.discountPrice/p.price)*100)}%</span>`:''}
+        </div>
+        <div class="text-sm text-muted mb-5 leading-relaxed">${escHtml(p.description||'No description available.')}</div>
+        <div class="text-sm mb-4 ${p.stock===0?'text-red-500':'text-green-600'} font-semibold">
+          ${p.stock===0 ? '✗ Out of Stock' : `✓ Available — ${p.stock} in stock`}
+        </div>
+        ${p.tags&&p.tags.length?`<div class="flex flex-wrap gap-1.5 mb-5">${p.tags.map(t=>`<span class="text-xs px-2 py-0.5 bg-gray-100 text-muted rounded-full">#${t}</span>`).join('')}</div>`:''}
+        <div class="flex gap-3">
+          <button onclick="openOrderModal('${p.id}');closeModal('product-detail-modal')" ${p.stock===0?'disabled':''} class="btn-whatsapp flex-1 justify-center ${p.stock===0?'opacity-50 cursor-not-allowed':''}">
+            <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            Order via WhatsApp
+          </button>
+          <button onclick="openReviewModal('${p.id}')" class="btn-primary">Review</button>
+        </div>
+      </div>
+    </div>
+    <!-- Reviews -->
+    ${productReviews.length ? `
+    <div class="mt-8 border-t border-gray-100 pt-6">
+      <h4 class="font-semibold text-base text-primary mb-4">Customer Reviews (${productReviews.length})</h4>
+      <div class="flex flex-col gap-4">
+        ${productReviews.map(r=>`
+          <div class="bg-gray-50 rounded-xl p-4">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="font-semibold text-sm">${escHtml(r.userName||r.name||'Anonymous')}</span>
+              <div>${renderStars(r.rating,5)}</div>
+            </div>
+            <p class="text-sm text-muted">${escHtml(r.text||r.review||'')}</p>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    ` : ''}
+    <!-- Related Products -->
+    <div class="mt-8 border-t border-gray-100 pt-6">
+      <h4 class="font-semibold text-base text-primary mb-4">Related Products</h4>
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        ${state.products.filter(x=>x.category===p.category&&x.id!==p.id).slice(0,3).map(rp=>`
+          <button onclick="viewProduct('${rp.id}')" class="text-left bg-gray-50 rounded-xl p-3 hover:bg-gray-100 transition">
+            <div class="font-medium text-sm text-primary line-clamp-2 mb-1">${escHtml(rp.name)}</div>
+            <div class="text-secondary text-sm font-bold">৳${(rp.discountPrice||rp.price).toLocaleString()}</div>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  openModal('product-detail-modal');
+}
+
+function switchImg(src, el) {
+  const mainEl = document.getElementById('main-img-el');
+  if(mainEl) mainEl.src = src;
+  document.querySelectorAll('.thumb').forEach(t=>t.classList.remove('active'));
+  if(el) el.classList.add('active');
+}
+
+// ============================================================
+// OFFERS
+// ============================================================
+function renderOffers() {
+  const grid = document.getElementById('offers-grid');
+  if(!state.offers||!state.offers.length) return;
+  grid.innerHTML = state.offers.map(o => `
+    <div class="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-6 text-white">
+      <div class="flex items-start justify-between mb-3">
+        <h3 class="font-bold text-lg">${escHtml(o.title)}</h3>
+        <span class="bg-accent text-primary text-xs font-black px-3 py-1 rounded-full">${o.discount}% OFF</span>
+      </div>
+      <p class="text-white/70 text-sm mb-4">${escHtml(o.description||'')}</p>
+      ${o.expiry ? `
+      <div class="text-xs text-white/60 mb-2">Ends in:</div>
+      <div class="flex gap-2" id="countdown-${o.id}">
+        <div class="countdown-unit" id="cd-d-${o.id}">00</div>
+        <span class="text-xl font-bold self-center">:</span>
+        <div class="countdown-unit" id="cd-h-${o.id}">00</div>
+        <span class="text-xl font-bold self-center">:</span>
+        <div class="countdown-unit" id="cd-m-${o.id}">00</div>
+        <span class="text-xl font-bold self-center">:</span>
+        <div class="countdown-unit" id="cd-s-${o.id}">00</div>
+      </div>
+      ` : ''}
+      <button onclick="document.getElementById('products').scrollIntoView({behavior:'smooth'})" class="mt-4 btn-accent text-sm w-full justify-center text-center">Shop Now</button>
+    </div>
+  `).join('');
+  startCountdowns();
+}
+
+function startCountdowns() {
+  state.offers.filter(o=>o.expiry).forEach(o => {
+    function tick() {
+      const end  = new Date(o.expiry).getTime();
+      const diff = end - Date.now();
+      if(diff<=0) return;
+      const d = Math.floor(diff/86400000);
+      const h = Math.floor((diff%86400000)/3600000);
+      const m = Math.floor((diff%3600000)/60000);
+      const s = Math.floor((diff%60000)/1000);
+      const set = (id,v)=>{const el=document.getElementById(id);if(el)el.textContent=String(v).padStart(2,'0');};
+      set(`cd-d-${o.id}`,d); set(`cd-h-${o.id}`,h); set(`cd-m-${o.id}`,m); set(`cd-s-${o.id}`,s);
+    }
+    tick(); setInterval(tick,1000);
+  });
+}
+
+// ============================================================
+// REVIEWS
+// ============================================================
+function renderReviews() {
+  const grid = document.getElementById('reviews-grid');
+  if(!state.reviews||!state.reviews.length) {
+    grid.innerHTML='<p class="text-muted col-span-full text-center py-4">No reviews yet.</p>';
+    return;
+  }
+  grid.innerHTML = state.reviews.slice(0,6).map(r => `
+    <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center font-bold text-secondary text-base">
+          ${(r.userName||r.name||'A').charAt(0).toUpperCase()}
+        </div>
+        <div>
+          <div class="font-semibold text-sm text-primary">${escHtml(r.userName||r.name||'Anonymous')}</div>
+          <div class="text-xs text-muted">${r.productName||'General'}</div>
+        </div>
+        <div class="ml-auto">${renderStars(r.rating,5)}</div>
+      </div>
+      <p class="text-sm text-muted leading-relaxed">"${escHtml(r.text||r.review||'')}"</p>
+      <div class="text-xs text-muted mt-2">${r.date ? new Date(r.date).toLocaleDateString() : ''}</div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// SEARCH
+// ============================================================
+function handleSearch(val) {
+  const q = val.toLowerCase().trim();
+  if(!q) { closeSearch(); renderProducts(state.filteredProducts); return; }
+  const res = state.products.filter(p =>
+    p.name.toLowerCase().includes(q) ||
+    (p.code&&p.code.toLowerCase().includes(q)) ||
+    (p.category&&p.category.toLowerCase().includes(q)) ||
+    (p.brand&&p.brand.toLowerCase().includes(q))
+  );
+  showSearchResults(res);
+}
+
+function showSearchResults(results) {
+  const box = document.getElementById('search-results');
+  if(!box) return;
+  if(!results.length) { box.innerHTML='<div class="p-4 text-sm text-muted text-center">No results found</div>'; box.classList.add('open'); return; }
+  box.innerHTML = results.slice(0,8).map(p=>`
+    <button onclick="viewProduct('${p.id}');closeSearch()" class="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-gray-50 transition border-b border-gray-50 last:border-0">
+      <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-300 shrink-0">
+        ${(p.images&&p.images[0])?`<img src="${p.images[0]}" class="w-full h-full object-cover rounded-lg" />`:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>'}
+      </div>
+      <div>
+        <div class="text-sm font-medium text-primary">${escHtml(p.name)}</div>
+        <div class="text-xs text-muted">${escHtml(p.category||'')} · ৳${(p.discountPrice||p.price).toLocaleString()}</div>
+      </div>
+    </button>
+  `).join('');
+  box.classList.add('open');
+}
+
+function openSearch() { if(document.getElementById('search-input').value) showSearchResults(state.products.filter(p=>p.name.toLowerCase().includes(document.getElementById('search-input').value.toLowerCase()))); }
+function closeSearch() { const b=document.getElementById('search-results'); if(b) b.classList.remove('open'); }
+
+// ============================================================
+// FILTERS
+// ============================================================
+function filterByCategory(cat, el) {
+  state.currentCategory = cat;
+  document.querySelectorAll('.cat-pill').forEach(p=>p.classList.remove('active'));
+  if(el) el.classList.add('active');
+  applyFilters();
+}
+
+function applyFilters() {
+  const cat      = document.querySelector('input[name="filter-cat"]:checked')?.value || 'all';
+  const minRating= parseFloat(document.querySelector('input[name="filter-rating"]:checked')?.value||'0');
+  const maxPrice = parseFloat(document.getElementById('price-range')?.value||'99999');
+  const inStock  = document.getElementById('filter-in-stock')?.checked;
+  const catFilter= state.currentCategory !== 'all' ? state.currentCategory : cat;
+
+  let filtered = state.products.filter(p => {
+    if(catFilter!=='all' && p.category!==catFilter) return false;
+    const price = p.discountPrice&&p.discountPrice>0 ? p.discountPrice : p.price;
+    if(price > maxPrice) return false;
+    if(minRating > 0 && (p.rating||0) < minRating) return false;
+    if(inStock && (p.stock===0||p.status==='out_of_stock')) return false;
+    return true;
+  });
+  state.filteredProducts = filtered;
+  applySortFilter();
+}
+
+function applySortFilter() {
+  const sort = document.getElementById('sort-select').value;
+  let arr = [...state.filteredProducts];
+  if(sort==='price_asc')  arr.sort((a,b)=>(a.discountPrice||a.price)-(b.discountPrice||b.price));
+  if(sort==='price_desc') arr.sort((a,b)=>(b.discountPrice||b.price)-(a.discountPrice||a.price));
+  if(sort==='rating')     arr.sort((a,b)=>(b.rating||0)-(a.rating||0));
+  if(sort==='popular')    arr.sort((a,b)=>(b.reviewCount||0)-(a.reviewCount||0));
+  renderProducts(arr);
+}
+
+function clearFilters() {
+  state.currentCategory = 'all';
+  document.querySelectorAll('.cat-pill').forEach((p,i)=>{ if(i===0) p.classList.add('active'); else p.classList.remove('active'); });
+  document.querySelectorAll('input[name="filter-cat"]')[0].checked = true;
+  document.querySelectorAll('input[name="filter-rating"]')[0].checked = true;
+  document.getElementById('price-range').value = 10000;
+  document.getElementById('price-label').textContent = '10000';
+  document.getElementById('filter-in-stock').checked = false;
+  state.filteredProducts = [...state.products];
+  renderProducts(state.filteredProducts);
+}
+
+function updatePriceLabel(v) {
+  document.getElementById('price-label').textContent = v;
+}
+
+// ============================================================
+// WHATSAPP ORDER
+// ============================================================
+function openOrderModal(productId) {
+  const p = state.products.find(x=>x.id===productId);
+  if(!p) return;
+  state.currentOrderProduct = p;
+  const price = p.discountPrice&&p.discountPrice>0 ? p.discountPrice : p.price;
+
+  document.getElementById('order-product-info').innerHTML = `
+    <div class="font-semibold text-primary mb-1">${escHtml(p.name)}</div>
+    <div class="text-xs text-muted mb-1">Code: ${escHtml(p.code)}</div>
+    <div class="text-lg font-bold text-secondary">৳${price.toLocaleString()}</div>
+  `;
+  document.getElementById('order-product-id').value = productId;
+
+  if(state.user && state.userDoc) {
+    document.getElementById('order-name').value    = state.userDoc.name||'';
+    document.getElementById('order-phone').value   = state.userDoc.phone||'';
+    document.getElementById('order-address').value = state.userDoc.address||'';
+  }
+  openModal('order-modal');
+}
+
+function placeWhatsAppOrder() {
+  const p    = state.currentOrderProduct;
+  if(!p) return;
+  const name  = document.getElementById('order-name').value.trim();
+  const phone = document.getElementById('order-phone').value.trim();
+  const addr  = document.getElementById('order-address').value.trim();
+  const qty   = parseInt(document.getElementById('order-qty').value)||1;
+  if(!name||!phone||!addr) { showToast('Please fill all required fields.','error'); return; }
+
+  const price     = p.discountPrice&&p.discountPrice>0 ? p.discountPrice : p.price;
+  const totalPrice= price*qty;
+  const waNumber  = state.settings.whatsappNumber || CONFIG.WHATSAPP_NUMBER;
+
+  const message = encodeURIComponent(
+`Hello ${CONFIG.WEBSITE_NAME},
+
+I want to place an order:
+
+🛍️ Product Name: ${p.name}
+🔢 Product Code: ${p.code}
+💵 Unit Price: ৳${price.toLocaleString()}
+📦 Quantity: ${qty}
+💰 Total Price: ৳${totalPrice.toLocaleString()}
+
+👤 My Name: ${name}
+📍 My Address: ${addr}
+📞 My Phone: ${phone}
+
+Please confirm my order. Thank you!`
+  );
+
+  // Save order locally
+  const order = { productId:p.id, productName:p.name, code:p.code, price:totalPrice, qty, name, phone, addr, date: new Date().toISOString() };
+  state.orders.push(order);
+  localStorage.setItem('tsc_orders', JSON.stringify(state.orders));
+
+  if(fbReady && state.user) {
+    db.collection('orders').add({...order, userId: state.user.uid}).catch(()=>{});
+  }
+
+  const url = `https://wa.me/${waNumber}?text=${message}`;
+  window.open(url,'_blank');
+  closeModal('order-modal');
+  showToast('Redirecting to WhatsApp…','success');
+}
+
+// ============================================================
+// REVIEWS
+// ============================================================
+function openReviewModal(productId) {
+  if(!state.user && !state.useDemo) { showToast('Please login to write a review.','info'); openModal('login-modal'); return; }
+  const sel = document.getElementById('review-product-select');
+  sel.innerHTML = `<option value="">General Review</option>` + state.products.map(p=>`<option value="${p.id}" ${p.id===productId?'selected':''}>${escHtml(p.name)}</option>`).join('');
+  if(productId) document.getElementById('review-product-id').value = productId;
+  state.selectedRating = 0;
+  document.querySelectorAll('.star-btn').forEach(s=>s.classList.remove('lit'));
+  document.getElementById('review-rating').value = 0;
+  if(state.user) document.getElementById('review-name').value = state.userDoc?.name||'';
+  openModal('review-modal');
+}
+
+function setRating(val) {
+  state.selectedRating = val;
+  document.getElementById('review-rating').value = val;
+  document.querySelectorAll('.star-btn').forEach(s => {
+    s.classList.toggle('lit', parseInt(s.dataset.val) <= val);
+  });
+}
+
+async function submitReview() {
+  const rating  = parseInt(document.getElementById('review-rating').value)||0;
+  const name    = document.getElementById('review-name').value.trim();
+  const text    = document.getElementById('review-text').value.trim();
+  const prodId  = document.getElementById('review-product-select').value;
+  const product = state.products.find(p=>p.id===prodId);
+
+  if(!rating) { showToast('Please select a rating.','error'); return; }
+  if(!name)   { showToast('Please enter your name.','error'); return; }
+  if(!text)   { showToast('Please write your review.','error'); return; }
+
+  const review = {
+    userName: name,
+    rating,
+    text,
+    productId: prodId||null,
+    productName: product?.name||'General',
+    userId: state.user?.uid||null,
+    date: new Date().toISOString()
+  };
+
+  if(fbReady) {
+    try {
+      const ref = await db.collection('reviews').add(review);
+      review.id = ref.id;
+      // Update product rating
+      if(prodId) await updateProductRating(prodId);
+    } catch(e) { showToast('Error saving review.','error'); return; }
+  } else {
+    review.id = 'r'+Date.now();
+  }
+
+  state.reviews.unshift(review);
+  renderReviews();
+  closeModal('review-modal');
+  showToast('Thank you for your review!','success');
+}
+
+async function updateProductRating(productId) {
+  if(!fbReady) return;
+  const snap = await db.collection('reviews').where('productId','==',productId).get();
+  const reviews = snap.docs.map(d=>d.data());
+  const avg = reviews.reduce((s,r)=>s+(r.rating||0),0)/(reviews.length||1);
+  await db.collection('products').doc(productId).update({ rating: Math.round(avg*10)/10, reviewCount: reviews.length });
+}
+
+// ============================================================
+// AUTHENTICATION
+// ============================================================
+function setupAuthListener() {
+  auth.onAuthStateChanged(async (user) => {
+    state.user = user;
+    if(user) {
+      // Load user doc
+      try {
+        const doc = await db.collection('users').doc(user.uid).get();
+        if(doc.exists) state.userDoc = doc.data();
+        else state.userDoc = { name: user.displayName||'', email: user.email };
+        // Check admin
+        const admins = state.allAdmins.length ? state.allAdmins : (state.settings.admins||[]);
+        state.isAdmin = admins.includes(user.email);
+      } catch(e) {
+        state.userDoc = { name: user.displayName||'', email: user.email };
+      }
+      showUserMenu();
+    } else {
+      showAuthButtons();
+    }
+  });
+}
+
+function showUserMenu() {
+  document.getElementById('auth-buttons').classList.add('hidden');
+  document.getElementById('mobile-auth-buttons').classList.add('hidden');
+  document.getElementById('user-menu').classList.remove('hidden');
+  document.getElementById('user-menu').classList.add('flex');
+  document.getElementById('user-name-nav').textContent = state.userDoc?.name||'My Account';
+  if(state.isAdmin) { document.getElementById('admin-menu-link').classList.remove('hidden'); }
+}
+
+function showAuthButtons() {
+  document.getElementById('auth-buttons').classList.remove('hidden');
+  document.getElementById('mobile-auth-buttons').classList.remove('hidden');
+  document.getElementById('user-menu').classList.add('hidden');
+  document.getElementById('user-menu').classList.remove('flex');
+  document.getElementById('admin-menu-link').classList.add('hidden');
+}
+
+async function loginUser() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-password').value;
+  if(!email||!pass) { showToast('Please enter email and password.','error'); return; }
+  try {
+    await auth.signInWithEmailAndPassword(email,pass);
+    closeModal('login-modal');
+    showToast('Welcome back!','success');
+  } catch(e) {
+    showToast(getAuthError(e.code),'error');
+  }
+}
+
+async function registerUser() {
+  const name  = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const phone = document.getElementById('reg-phone').value.trim();
+  const addr  = document.getElementById('reg-address').value.trim();
+  const pass  = document.getElementById('reg-password').value;
+  if(!name||!email||!pass) { showToast('Please fill required fields.','error'); return; }
+  if(pass.length<6) { showToast('Password must be at least 6 characters.','error'); return; }
+  try {
+    const cred = await auth.createUserWithEmailAndPassword(email,pass);
+    await cred.user.updateProfile({displayName:name});
+    await db.collection('users').doc(cred.user.uid).set({ name,email,phone,address:addr,role:'user',createdAt:new Date().toISOString() });
+    closeModal('register-modal');
+    showToast('Account created! Welcome to Three Star Corner 🎉','success');
+  } catch(e) {
+    showToast(getAuthError(e.code),'error');
+  }
+}
+
+async function resetPassword() {
+  const email = document.getElementById('forgot-email').value.trim();
+  if(!email) { showToast('Please enter your email.','error'); return; }
+  try {
+    await auth.sendPasswordResetEmail(email);
+    closeModal('forgot-modal');
+    showToast('Password reset email sent! Check your inbox.','success');
+  } catch(e) {
+    showToast(getAuthError(e.code),'error');
+  }
+}
+
+function logout() {
+  if(fbReady) auth.signOut().then(()=>{ showToast('Logged out successfully.','info'); state.user=null; state.userDoc=null; state.isAdmin=false; showAuthButtons(); closeAdminPanel(); });
+  else { state.user=null; showAuthButtons(); }
+}
+
+function getAuthError(code) {
+  const msgs = {
+    'auth/invalid-email':'Invalid email address.',
+    'auth/user-not-found':'No account with this email.',
+    'auth/wrong-password':'Incorrect password.',
+    'auth/email-already-in-use':'Email already in use.',
+    'auth/weak-password':'Password too weak.',
+    'auth/too-many-requests':'Too many attempts. Try again later.',
+  };
+  return msgs[code]||'Authentication error. Please try again.';
+}
+
+// ============================================================
+// PROFILE
+// ============================================================
+function showProfile() {
+  if(!state.user) { openModal('login-modal'); return; }
+  document.getElementById('profile-name').value    = state.userDoc?.name||'';
+  document.getElementById('profile-email').value   = state.user.email||'';
+  document.getElementById('profile-phone').value   = state.userDoc?.phone||'';
+  document.getElementById('profile-address').value = state.userDoc?.address||'';
+  openModal('profile-modal');
+}
+
+async function updateProfile() {
+  if(!state.user) return;
+  const name  = document.getElementById('profile-name').value.trim();
+  const phone = document.getElementById('profile-phone').value.trim();
+  const addr  = document.getElementById('profile-address').value.trim();
+  try {
+    await state.user.updateProfile({displayName:name});
+    if(fbReady) await db.collection('users').doc(state.user.uid).update({name,phone,address:addr});
+    state.userDoc = {...state.userDoc,name,phone,address:addr};
+    document.getElementById('user-name-nav').textContent = name;
+    closeModal('profile-modal');
+    showToast('Profile updated!','success');
+  } catch(e) { showToast('Error updating profile.','error'); }
+}
+
+// ============================================================
+// ORDERS HISTORY
+// ============================================================
+function showOrders() {
+  const saved = JSON.parse(localStorage.getItem('tsc_orders')||'[]');
+  state.orders = saved;
+  const list = document.getElementById('orders-list');
+  if(!saved.length) { list.innerHTML='<p class="text-muted text-sm text-center py-4">No orders yet.</p>'; }
+  else {
+    list.innerHTML = saved.slice().reverse().map(o=>`
+      <div class="bg-gray-50 rounded-xl p-4 text-sm">
+        <div class="font-semibold text-primary">${escHtml(o.productName)}</div>
+        <div class="text-muted text-xs">Code: ${escHtml(o.code)} · Qty: ${o.qty}</div>
+        <div class="text-secondary font-bold">৳${o.price?.toLocaleString()}</div>
+        <div class="text-muted text-xs mt-1">${new Date(o.date).toLocaleString()}</div>
+      </div>
+    `).join('');
+  }
+  openModal('orders-modal');
+}
+
+// ============================================================
+// NEWSLETTER
+// ============================================================
+async function subscribeNewsletter() {
+  const email = document.getElementById('newsletter-email').value.trim();
+  if(!email||!email.includes('@')) { showToast('Please enter a valid email.','error'); return; }
+  if(fbReady) {
+    try {
+      await db.collection('newsletter').add({ email, date:new Date().toISOString() });
+    } catch(e) {}
+  }
+  showToast('Subscribed! You\'ll get our best deals first. 🎉','success');
+  document.getElementById('newsletter-email').value = '';
+}
+
+// ============================================================
+// CONTACT
+// ============================================================
+async function sendContactMessage() {
+  const name    = document.getElementById('contact-name').value.trim();
+  const email   = document.getElementById('contact-email-input').value.trim();
+  const subject = document.getElementById('contact-subject').value.trim();
+  const message = document.getElementById('contact-message').value.trim();
+  if(!name||!email||!message) { showToast('Please fill all required fields.','error'); return; }
+
+  const data = { name, email, subject, message, date:new Date().toISOString() };
+
+  if(fbReady) {
+    try { await db.collection('contactMessages').add(data); } catch(e){}
+  }
+
+  if(CONFIG.EMAILJS_PUBLIC_KEY && CONFIG.EMAILJS_SERVICE_ID && CONFIG.EMAILJS_TEMPLATE_ID) {
+    try {
+      emailjs.send(CONFIG.EMAILJS_SERVICE_ID, CONFIG.EMAILJS_TEMPLATE_ID, { from_name:name, from_email:email, subject, message });
+    } catch(e){}
+  }
+
+  showToast('Message sent! We\'ll get back to you soon.','success');
+  ['contact-name','contact-email-input','contact-subject','contact-message'].forEach(id=>{ document.getElementById(id).value=''; });
+}
+
+// ============================================================
+// SETTINGS / LINKS
+// ============================================================
+function updateSiteLinks() {
+  const s   = state.settings;
+  const wa  = s.whatsappNumber || CONFIG.WHATSAPP_NUMBER;
+  const waUrl= `https://wa.me/${wa}`;
+  const el = id => document.getElementById(id);
+  if(el('contact-whatsapp')) el('contact-whatsapp').textContent = wa || 'Click to chat';
+  if(el('contact-email'))    el('contact-email').textContent    = s.email||'info@threestarcorner.com';
+  if(el('contact-address'))  el('contact-address').textContent  = s.address||'Dhaka, Bangladesh';
+  if(el('footer-wa-link'))   el('footer-wa-link').href          = waUrl;
+  if(el('link-wa'))          el('link-wa').href                 = waUrl;
+  if(el('link-fb'))          el('link-fb').href                 = s.facebook||'#';
+  if(el('link-ig'))          el('link-ig').href                 = s.instagram||'#';
+  if(el('link-yt'))          el('link-yt').href                 = s.youtube||'#';
+}
+
+function updateStats() {
+  const setEl = (id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+  setEl('stat-products', state.products.length+'+');
+  setEl('stat-users','100+');
+  setEl('about-stat-products', state.products.length+'+');
+}
+
+// ============================================================
+// ADMIN PANEL
+// ============================================================
+function openAdminPanel() {
+  if(!state.isAdmin && !state.useDemo) {
+    showToast('Admin access required.','error');
+    return;
+  }
+  document.getElementById('main-site').style.display = 'none';
+  document.getElementById('admin-panel').style.display = 'block';
+  adminTab('dashboard');
+  loadAdminData();
+}
+
+function closeAdminPanel() {
+  document.getElementById('admin-panel').style.display = 'none';
+  document.getElementById('main-site').style.display   = 'block';
+}
+
+function toggleAdminSidebar() {
+  const s = document.getElementById('admin-sidebar');
+  s.classList.toggle('-translate-x-full');
+}
+
+function adminTab(tab) {
+  document.querySelectorAll('.admin-tab-content').forEach(t=>t.classList.add('hidden'));
+  document.getElementById(`admin-tab-${tab}`)?.classList.remove('hidden');
+  document.querySelectorAll('.admin-nav-btn').forEach(b=>b.style.background='');
+  const active = document.getElementById(`nav-${tab}`);
+  if(active) active.style.background = 'rgba(255,255,255,0.15)';
+}
+
+async function loadAdminData() {
+  if(fbReady) {
+    try {
+      const [pSnap,uSnap,rSnap,mSnap,oSnap,catSnap] = await Promise.all([
+        db.collection('products').get(),
+        db.collection('users').get(),
+        db.collection('reviews').get(),
+        db.collection('contactMessages').get(),
+        db.collection('offers').get(),
+        db.collection('categories').get(),
+      ]);
+      state.products   = pSnap.docs.map(d=>({id:d.id,...d.data()}));
+      state.reviews    = rSnap.docs.map(d=>({id:d.id,...d.data()}));
+      state.offers     = oSnap.docs.map(d=>({id:d.id,...d.data()}));
+      state.categories = catSnap.docs.map(d=>({id:d.id,...d.data()}));
+      document.getElementById('stat-total-products').textContent = pSnap.size;
+      document.getElementById('stat-total-users').textContent    = uSnap.size;
+      document.getElementById('stat-total-reviews').textContent  = rSnap.size;
+      document.getElementById('stat-total-messages').textContent = mSnap.size;
+      renderAdminProducts(state.products);
+      renderAdminReviews(state.reviews);
+      renderAdminUsers(uSnap.docs.map(d=>({id:d.id,...d.data()})));
+      renderAdminMessages(mSnap.docs.map(d=>({id:d.id,...d.data()})));
+      renderAdminCategories(state.categories);
+      renderAdminOffers(state.offers);
+      fillSettingsForm();
+      renderDashRecent();
+    } catch(e){ console.error(e); }
+  } else {
+    // Demo mode
+    document.getElementById('stat-total-products').textContent = state.products.length;
+    document.getElementById('stat-total-users').textContent    = '5';
+    document.getElementById('stat-total-reviews').textContent  = state.reviews.length;
+    document.getElementById('stat-total-messages').textContent = '3';
+    renderAdminProducts(state.products);
+    renderAdminReviews(state.reviews);
+    renderAdminCategories(state.categories);
+    renderAdminOffers(state.offers);
+    renderDashRecent();
+  }
+}
+
+function renderDashRecent() {
+  const tbody = document.querySelector('#dash-recent-products tbody');
+  if(!tbody) return;
+  tbody.innerHTML = state.products.slice(0,10).map(p=>`
+    <tr>
+      <td class="font-medium">${escHtml(p.name)}</td>
+      <td class="text-muted font-mono text-xs">${escHtml(p.code||'')}</td>
+      <td>৳${(p.discountPrice||p.price).toLocaleString()}</td>
+      <td>${p.stock||0}</td>
+      <td><span class="px-2 py-0.5 rounded-full text-xs font-semibold ${p.status==='active'?'bg-green-100 text-green-700':'bg-gray-100 text-gray-600'}">${p.status||'active'}</span></td>
+    </tr>
+  `).join('');
+}
+
+function renderAdminProducts(products) {
+  const tbody = document.getElementById('admin-products-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = products.map(p=>`
+    <tr>
+      <td><div class="w-10 h-10 rounded-lg bg-gray-100 overflow-hidden">${p.images&&p.images[0]?`<img src="${p.images[0]}" class="w-full h-full object-cover" />`:'<div class="w-full h-full flex items-center justify-center text-gray-300"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>'}</div></td>
+      <td class="font-medium max-w-[160px] truncate">${escHtml(p.name)}</td>
+      <td class="font-mono text-xs text-muted">${escHtml(p.code||'')}</td>
+      <td class="text-xs">${escHtml(p.category||'')}</td>
+      <td>৳${(p.discountPrice||p.price).toLocaleString()}</td>
+      <td>${p.stock||0}</td>
+      <td><span class="px-2 py-0.5 rounded-full text-xs font-semibold ${p.status==='active'?'bg-green-100 text-green-700':p.status==='out_of_stock'?'bg-red-100 text-red-700':'bg-gray-100 text-gray-600'}">${p.status||'active'}</span></td>
+      <td>
+        <div class="flex gap-1">
+          <button onclick="editProduct('${p.id}')" class="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition" title="Edit">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button onclick="deleteProduct('${p.id}')" class="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition" title="Delete">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+  // Update category datalist
+  const cats = [...new Set(products.map(p=>p.category).filter(Boolean))];
+  document.getElementById('category-datalist').innerHTML = cats.map(c=>`<option value="${escHtml(c)}">`).join('');
+}
+
+function filterAdminProducts(q) {
+  const filtered = state.products.filter(p=>p.name.toLowerCase().includes(q.toLowerCase())||p.code?.toLowerCase().includes(q.toLowerCase()));
+  renderAdminProducts(filtered);
+}
+
+function editProduct(id) {
+  const p = state.products.find(x=>x.id===id);
+  if(!p) return;
+  document.getElementById('edit-product-id').value  = id;
+  document.getElementById('p-name').value           = p.name||'';
+  document.getElementById('p-code').value           = p.code||'';
+  document.getElementById('p-category').value       = p.category||'';
+  document.getElementById('p-brand').value          = p.brand||'';
+  document.getElementById('p-price').value          = p.price||'';
+  document.getElementById('p-discount').value       = p.discountPrice||'';
+  document.getElementById('p-stock').value          = p.stock||'';
+  document.getElementById('p-status').value         = p.status||'active';
+  document.getElementById('p-description').value    = p.description||'';
+  document.getElementById('p-tags').value           = (p.tags||[]).join(', ');
+  document.getElementById('p-image-urls').value     = (p.images||[]).join('\n');
+  document.getElementById('product-form-title').textContent = 'Edit Product';
+  document.getElementById('save-product-btn').textContent   = 'Update Product';
+  adminTab('add-product');
+}
+
+async function saveProduct() {
+  const name     = document.getElementById('p-name').value.trim();
+  const code     = document.getElementById('p-code').value.trim();
+  const category = document.getElementById('p-category').value.trim();
+  const brand    = document.getElementById('p-brand').value.trim();
+  const price    = parseFloat(document.getElementById('p-price').value)||0;
+  const discount = parseFloat(document.getElementById('p-discount').value)||0;
+  const stock    = parseInt(document.getElementById('p-stock').value)||0;
+  const status   = document.getElementById('p-status').value;
+  const desc     = document.getElementById('p-description').value.trim();
+  const tags     = document.getElementById('p-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  const imgUrls  = document.getElementById('p-image-urls').value.split('\n').map(u=>u.trim()).filter(Boolean);
+  const editId   = document.getElementById('edit-product-id').value;
+
+  if(!name||!price) { showToast('Product name and price are required.','error'); return; }
+
+  const data = { name,code,category,brand,price,discountPrice:discount,stock,status,description:desc,tags,images:imgUrls,rating:0,reviewCount:0,dateAdded:new Date().toISOString() };
+
+  if(fbReady) {
+    try {
+      if(editId) {
+        await db.collection('products').doc(editId).update(data);
+        const idx = state.products.findIndex(p=>p.id===editId);
+        if(idx>-1) state.products[idx] = {...state.products[idx],...data};
+        showToast('Product updated!','success');
+      } else {
+        const ref = await db.collection('products').add(data);
+        state.products.unshift({id:ref.id,...data});
+        showToast('Product added!','success');
+      }
+    } catch(e) { showToast('Error saving product.','error'); return; }
+  } else {
+    if(editId) {
+      const idx = state.products.findIndex(p=>p.id===editId);
+      if(idx>-1) state.products[idx] = {...state.products[idx],...data};
+    } else {
+      state.products.unshift({id:'p'+Date.now(),...data});
+    }
+    showToast(editId?'Product updated!':'Product added!','success');
+  }
+
+  state.filteredProducts = [...state.products];
+  renderProducts(state.filteredProducts);
+  renderAdminProducts(state.products);
+  renderDashRecent();
+  resetProductForm();
+  adminTab('products');
+}
+
+function resetProductForm() {
+  ['p-name','p-code','p-category','p-brand','p-price','p-discount','p-stock','p-description','p-tags','p-image-urls'].forEach(id=>{ document.getElementById(id).value=''; });
+  document.getElementById('edit-product-id').value = '';
+  document.getElementById('p-status').value = 'active';
+  document.getElementById('image-preview').innerHTML = '';
+  document.getElementById('product-form-title').textContent   = 'Add New Product';
+  document.getElementById('save-product-btn').textContent     = 'Save Product';
+}
+
+async function deleteProduct(id) {
+  if(!confirm('Delete this product? This cannot be undone.')) return;
+  if(fbReady) {
+    try { await db.collection('products').doc(id).delete(); } catch(e) { showToast('Error deleting.','error'); return; }
+  }
+  state.products = state.products.filter(p=>p.id!==id);
+  state.filteredProducts = state.filteredProducts.filter(p=>p.id!==id);
+  renderProducts(state.filteredProducts);
+  renderAdminProducts(state.products);
+  showToast('Product deleted.','info');
+}
+
+function previewImages(input) {
+  const preview = document.getElementById('image-preview');
+  preview.innerHTML = '';
+  Array.from(input.files).slice(0,6).forEach(file=>{
+    const url = URL.createObjectURL(file);
+    preview.innerHTML += `<img src="${url}" class="w-16 h-16 rounded-lg object-cover border-2 border-secondary" />`;
+  });
+}
+
+// ---- Categories Admin ----
+function renderAdminCategories(cats) {
+  const list = document.getElementById('admin-categories-list');
+  if(!list) return;
+  list.innerHTML = cats.map(c=>`
+    <div class="flex items-center justify-between py-2 border-b border-gray-100">
+      <span class="text-sm">${c.icon||'🏷️'} ${escHtml(c.name)}</span>
+      <button onclick="deleteCategory('${c.id}')" class="text-red-400 hover:text-red-600 text-xs">Delete</button>
+    </div>
+  `).join('') || '<p class="text-sm text-muted">No categories yet.</p>';
+}
+
+async function saveCategory() {
+  const name = document.getElementById('cat-name').value.trim();
+  const icon = document.getElementById('cat-icon').value.trim()||'🏷️';
+  if(!name) { showToast('Category name required.','error'); return; }
+  const cat = { name, icon };
+  if(fbReady) {
+    try {
+      const ref = await db.collection('categories').add(cat);
+      state.categories.push({id:ref.id,...cat});
+    } catch(e) { showToast('Error saving.','error'); return; }
+  } else {
+    state.categories.push({id:'cat'+Date.now(),...cat});
+  }
+  renderAdminCategories(state.categories);
+  renderCategories();
+  renderCategoryPills();
+  document.getElementById('cat-name').value='';
+  document.getElementById('cat-icon').value='';
+  showToast('Category added!','success');
+}
+
+async function deleteCategory(id) {
+  if(!confirm('Delete this category?')) return;
+  if(fbReady) { try { await db.collection('categories').doc(id).delete(); } catch(e){} }
+  state.categories = state.categories.filter(c=>c.id!==id);
+  renderAdminCategories(state.categories);
+  renderCategories();
+}
+
+// ---- Offers Admin ----
+function renderAdminOffers(offers) {
+  const list = document.getElementById('admin-offers-list');
+  if(!list) return;
+  list.innerHTML = offers.map(o=>`
+    <div class="bg-gray-50 rounded-xl p-3">
+      <div class="flex items-start justify-between">
+        <div>
+          <div class="font-semibold text-sm">${escHtml(o.title)}</div>
+          <div class="text-xs text-muted">${o.discount}% off · ${o.expiry?new Date(o.expiry).toLocaleDateString():''}</div>
+        </div>
+        <div class="flex gap-1">
+          <button onclick="editOffer('${o.id}')" class="text-blue-500 text-xs hover:underline">Edit</button>
+          <button onclick="deleteOffer('${o.id}')" class="text-red-400 text-xs hover:underline ml-1">Del</button>
+        </div>
+      </div>
+    </div>
+  `).join('') || '<p class="text-sm text-muted">No offers yet.</p>';
+}
+
+function editOffer(id) {
+  const o = state.offers.find(x=>x.id===id);
+  if(!o) return;
+  document.getElementById('offer-id').value          = id;
+  document.getElementById('offer-title').value       = o.title||'';
+  document.getElementById('offer-description').value = o.description||'';
+  document.getElementById('offer-discount').value    = o.discount||'';
+  document.getElementById('offer-expiry').value      = o.expiry ? new Date(o.expiry).toISOString().slice(0,16) : '';
+}
+
+async function saveOffer() {
+  const id    = document.getElementById('offer-id').value;
+  const title = document.getElementById('offer-title').value.trim();
+  const desc  = document.getElementById('offer-description').value.trim();
+  const disc  = parseInt(document.getElementById('offer-discount').value)||0;
+  const exp   = document.getElementById('offer-expiry').value;
+  if(!title) { showToast('Title required.','error'); return; }
+  const data = { title, description:desc, discount:disc, expiry:exp ? new Date(exp).toISOString() : null };
+  if(fbReady) {
+    try {
+      if(id) { await db.collection('offers').doc(id).update(data); }
+      else   { const r=await db.collection('offers').add(data); state.offers.push({id:r.id,...data}); }
+    } catch(e) { showToast('Error saving.','error'); return; }
+  } else {
+    if(id) { const idx=state.offers.findIndex(o=>o.id===id); if(idx>-1) state.offers[idx]={...state.offers[idx],...data}; }
+    else   { state.offers.push({id:'o'+Date.now(),...data}); }
+  }
+  renderAdminOffers(state.offers);
+  renderOffers();
+  showToast('Offer saved!','success');
+  document.getElementById('offer-id').value='';
+  ['offer-title','offer-description','offer-discount','offer-expiry'].forEach(i=>document.getElementById(i).value='');
+}
+
+async function deleteOffer(id) {
+  if(!confirm('Delete offer?')) return;
+  if(fbReady) { try { await db.collection('offers').doc(id).delete(); } catch(e){} }
+  state.offers = state.offers.filter(o=>o.id!==id);
+  renderAdminOffers(state.offers);
+  renderOffers();
+  showToast('Offer deleted.','info');
+}
+
+// ---- Reviews Admin ----
+function renderAdminReviews(reviews) {
+  const tbody = document.getElementById('admin-reviews-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = reviews.map(r=>`
+    <tr>
+      <td class="font-medium text-sm">${escHtml(r.userName||r.name||'Anonymous')}</td>
+      <td class="text-xs text-muted">${escHtml(r.productName||'General')}</td>
+      <td>${renderStars(r.rating,5)}</td>
+      <td class="text-sm max-w-[200px] truncate">${escHtml(r.text||'')}</td>
+      <td class="text-xs text-muted">${r.date?new Date(r.date).toLocaleDateString():''}</td>
+      <td>
+        <button onclick="deleteReview('${r.id}')" class="text-xs text-red-400 hover:text-red-600">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function deleteReview(id) {
+  if(!confirm('Delete review?')) return;
+  if(fbReady) { try { await db.collection('reviews').doc(id).delete(); } catch(e){} }
+  state.reviews = state.reviews.filter(r=>r.id!==id);
+  renderAdminReviews(state.reviews);
+  renderReviews();
+  showToast('Review deleted.','info');
+}
+
+// ---- Users Admin ----
+function renderAdminUsers(users) {
+  const tbody = document.getElementById('admin-users-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = users.map(u=>`
+    <tr>
+      <td class="font-medium">${escHtml(u.name||'')}</td>
+      <td class="text-sm text-muted">${escHtml(u.email||'')}</td>
+      <td class="text-sm">${escHtml(u.phone||'')}</td>
+      <td class="text-sm max-w-[120px] truncate">${escHtml(u.address||'')}</td>
+      <td><span class="px-2 py-0.5 rounded-full text-xs font-semibold ${u.role==='admin'?'bg-purple-100 text-purple-700':'bg-gray-100 text-gray-600'}">${u.role||'user'}</span></td>
+      <td class="text-xs text-muted">${u.createdAt?new Date(u.createdAt).toLocaleDateString():''}</td>
+    </tr>
+  `).join('');
+}
+
+// ---- Messages Admin ----
+function renderAdminMessages(msgs) {
+  const tbody = document.getElementById('admin-messages-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = msgs.map(m=>`
+    <tr>
+      <td class="font-medium">${escHtml(m.name||'')}</td>
+      <td class="text-sm text-muted">${escHtml(m.email||'')}</td>
+      <td class="text-sm">${escHtml(m.subject||'')}</td>
+      <td class="text-sm max-w-[180px] truncate">${escHtml(m.message||'')}</td>
+      <td class="text-xs text-muted">${m.date?new Date(m.date).toLocaleDateString():''}</td>
+      <td>
+        <button onclick="deleteMessage('${m.id}')" class="text-xs text-red-400 hover:text-red-600">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function deleteMessage(id) {
+  if(fbReady) { try { await db.collection('contactMessages').doc(id).delete(); } catch(e){} }
+  showToast('Message deleted.','info');
+}
+
+// ---- Settings ----
+function fillSettingsForm() {
+  const s = state.settings;
+  const el= id=>document.getElementById(id);
+  if(el('set-name'))     el('set-name').value     = s.websiteName||CONFIG.WEBSITE_NAME;
+  if(el('set-whatsapp')) el('set-whatsapp').value = s.whatsappNumber||CONFIG.WHATSAPP_NUMBER;
+  if(el('set-email'))    el('set-email').value    = s.email||'';
+  if(el('set-address'))  el('set-address').value  = s.address||'';
+  if(el('set-facebook')) el('set-facebook').value = s.facebook||'';
+  if(el('set-instagram'))el('set-instagram').value= s.instagram||'';
+  if(el('set-youtube'))  el('set-youtube').value  = s.youtube||'';
+  if(el('set-admins'))   el('set-admins').value   = (s.admins||[]).join(', ');
+}
+
+async function saveSettings() {
+  const el=id=>document.getElementById(id).value.trim();
+  const admins = el('set-admins').split(',').map(a=>a.trim()).filter(Boolean);
+  const data = {
+    websiteName:     el('set-name'),
+    whatsappNumber:  el('set-whatsapp'),
+    email:           el('set-email'),
+    address:         el('set-address'),
+    facebook:        el('set-facebook'),
+    instagram:       el('set-instagram'),
+    youtube:         el('set-youtube'),
+    admins,
+  };
+  if(fbReady) {
+    try { await db.collection('settings').doc('main').set(data, {merge:true}); }
+    catch(e) { showToast('Error saving settings.','error'); return; }
+  }
+  state.settings = {...state.settings,...data};
+  updateSiteLinks();
+  showToast('Settings saved!','success');
+}
+
+// ============================================================
+// HERO SLIDER
+// ============================================================
+let slideInterval;
+
+function goToSlide(n) {
+  document.querySelectorAll('.hero-slide').forEach((s,i)=>s.classList.toggle('active',i===n));
+  document.querySelectorAll('.hero-dot').forEach((d,i)=>{ d.style.background = i===n ? 'var(--accent)' : 'rgba(255,255,255,0.4)'; });
+  state.currentSlide = n;
+}
+
+function nextSlide() {
+  const slides = document.querySelectorAll('.hero-slide').length;
+  goToSlide((state.currentSlide+1)%slides);
+}
+
+function prevSlide() {
+  const slides = document.querySelectorAll('.hero-slide').length;
+  goToSlide((state.currentSlide-1+slides)%slides);
+}
+
+function startSlider() {
+  slideInterval = setInterval(nextSlide, 5000);
+}
+
+// ============================================================
+// MOBILE MENU
+// ============================================================
+let mobileMenuOpen = false;
+
+function toggleMobileMenu() {
+  mobileMenuOpen = !mobileMenuOpen;
+  const menu = document.getElementById('mobile-menu');
+  if(mobileMenuOpen) {
+    menu.style.maxHeight = '600px';
+    menu.style.opacity   = '1';
+  } else {
+    menu.style.maxHeight = '0';
+    menu.style.opacity   = '0';
+  }
+}
+
+// ============================================================
+// NAVBAR SCROLL
+// ============================================================
+window.addEventListener('scroll',()=>{
+  const nb  = document.getElementById('navbar');
+  const btt = document.getElementById('back-to-top');
+  if(window.scrollY>60) { nb.classList.add('scrolled'); btt.classList.add('visible'); }
+  else                  { nb.classList.remove('scrolled'); btt.classList.remove('visible'); }
+});
+
+// ============================================================
+// MODALS
+// ============================================================
+function openModal(id) {
+  document.getElementById(id).classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+// Close modal on backdrop click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if(e.target === overlay) closeModal(overlay.id);
+  });
+});
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(msg, type='info') {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = msg;
+  document.getElementById('toast-container').appendChild(toast);
+  setTimeout(()=>{ toast.style.opacity='0'; toast.style.transform='translateY(20px)'; toast.style.transition='all .3s'; setTimeout(()=>toast.remove(),300); }, 3500);
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function escHtml(str) {
+  if(!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
+function hideSplash() {
+  const loader = document.getElementById('page-loader');
+  setTimeout(()=>{ loader.classList.add('hide'); setTimeout(()=>loader.remove(),500); }, 600);
+}
+
+// ============================================================
+// COUNTER ANIMATION
+// ============================================================
+function animateCounter(el, target, duration=1200) {
+  let start = 0, startTime = null;
+  const step = ts => {
+    if(!startTime) startTime = ts;
+    const p = Math.min((ts-startTime)/duration,1);
+    el.textContent = Math.floor(p*target)+(p<1?'':'+')+' ';
+    if(p<1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  initFirebase();
+  startSlider();
+
+  // Load stored orders
+  state.orders = JSON.parse(localStorage.getItem('tsc_orders')||'[]');
+
+  // EmailJS init
+  if(CONFIG.EMAILJS_PUBLIC_KEY) emailjs.init(CONFIG.EMAILJS_PUBLIC_KEY);
+
+  // Scroll animations (intersection observer)
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if(entry.isIntersecting) {
+        entry.target.style.opacity  = '1';
+        entry.target.style.transform= 'translateY(0)';
+      }
+    });
+  }, {threshold:0.1});
+
+  document.querySelectorAll('.section').forEach(s=>{
+    s.style.opacity   = '0';
+    s.style.transform = 'translateY(20px)';
+    s.style.transition= 'opacity .6s ease, transform .6s ease';
+    observer.observe(s);
+  });
+});
+</script>
+
+</body>
+</html>
