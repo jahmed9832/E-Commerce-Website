@@ -934,7 +934,7 @@
               </div>
               <div>
                 <h4 class="font-semibold text-primary">Email</h4>
-                <p id="contact-email" class="text-muted text-sm">info@threestarcorner.com</p>
+                <p id="contact-email" class="text-muted text-sm">jahmed9832@gmail.com</p>
               </div>
             </div>
             <div class="flex items-start gap-4">
@@ -1566,20 +1566,25 @@
 // CONFIG — EDIT ONLY THIS SECTION FOR CUSTOMIZATION
 // ============================================================
 const CONFIG = {
-  WEBSITE_NAME:        "Three Star Corner",
-  WHATSAPP_NUMBER:     "8801XXXXXXXXX",      // <-- Replace with real number
+  WEBSITE_NAME: "Three Star Corner",
+
+  // WhatsApp Number (নিজের নম্বর দাও)
+  WHATSAPP_NUMBER: "8801406791944",
+
   FIREBASE_CONFIG: {
-    apiKey:            "YOUR_API_KEY",
-    authDomain:        "YOUR_PROJECT.firebaseapp.com",
-    projectId:         "YOUR_PROJECT_ID",
-    storageBucket:     "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId:             "YOUR_APP_ID"
+    apiKey: "AIzaSyDyniPWf13VaBJXgVgs29IHJhTAGXFTHZo",
+    authDomain: "three-star-corner.firebaseapp.com",
+    projectId: "three-star-corner",
+    storageBucket: "three-star-corner.firebasestorage.app",
+    messagingSenderId: "76858218068",
+    appId: "1:76858218068:web:d2545633a6255110063fc1"
   },
-  EMAILJS_PUBLIC_KEY:  "",                   // <-- EmailJS public key
-  EMAILJS_SERVICE_ID:  "",                   // <-- EmailJS service ID
-  EMAILJS_TEMPLATE_ID: "",                   // <-- EmailJS template ID
+
+  EMAILJS_PUBLIC_KEY: "",
+  EMAILJS_SERVICE_ID: "",
+  EMAILJS_TEMPLATE_ID: ""
 };
+
 
 // ============================================================
 // DEMO DATA — used when Firebase is not configured
@@ -1685,7 +1690,7 @@ let fbReady = false;
 
 function initFirebase() {
   try {
-    if (CONFIG.FIREBASE_CONFIG.apiKey && CONFIG.FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY') {
+    if (CONFIG.FIREBASE_CONFIG.apiKey) {
       firebase.initializeApp(CONFIG.FIREBASE_CONFIG);
       db      = firebase.firestore();
       auth    = firebase.auth();
@@ -2295,8 +2300,8 @@ function setupAuthListener() {
         if(doc.exists) state.userDoc = doc.data();
         else state.userDoc = { name: user.displayName||'', email: user.email };
         // Check admin
-        const admins = state.allAdmins.length ? state.allAdmins : (state.settings.admins||[]);
-        state.isAdmin = admins.includes(user.email);
+        const admins = state.allAdmins.length ? state.allAdmins : (state.settings.admins||['jahmed9832@gmail.com']);
+        state.isAdmin = admins.includes(user.email) || user.email === 'jahmed9832@gmail.com';
       } catch(e) {
         state.userDoc = { name: user.displayName||'', email: user.email };
       }
@@ -2483,11 +2488,11 @@ function updateSiteLinks() {
   const waUrl= `https://wa.me/${wa}`;
   const el = id => document.getElementById(id);
   if(el('contact-whatsapp')) el('contact-whatsapp').textContent = wa || 'Click to chat';
-  if(el('contact-email'))    el('contact-email').textContent    = s.email||'info@threestarcorner.com';
+  if(el('contact-email'))    el('contact-email').textContent    = s.email||'jahmed9832@gmail.com';
   if(el('contact-address'))  el('contact-address').textContent  = s.address||'Dhaka, Bangladesh';
   if(el('footer-wa-link'))   el('footer-wa-link').href          = waUrl;
   if(el('link-wa'))          el('link-wa').href                 = waUrl;
-  if(el('link-fb'))          el('link-fb').href                 = s.facebook||'#';
+  if(el('link-fb'))          el('link-fb').href                 = s.facebook||'https://www.facebook.com/share/1BSYisdqde/';
   if(el('link-ig'))          el('link-ig').href                 = s.instagram||'#';
   if(el('link-yt'))          el('link-yt').href                 = s.youtube||'#';
 }
@@ -2636,9 +2641,25 @@ function editProduct(id) {
   document.getElementById('p-description').value    = p.description||'';
   document.getElementById('p-tags').value           = (p.tags||[]).join(', ');
   document.getElementById('p-image-urls').value     = (p.images||[]).join('\n');
+  
+  // Show image previews for existing images
+  const preview = document.getElementById('image-preview');
+  if(preview) {
+    preview.innerHTML = (p.images||[]).map(img => `<img src="${img}" class="w-16 h-16 rounded-lg object-cover border-2 border-secondary" />`).join('');
+  }
+
   document.getElementById('product-form-title').textContent = 'Edit Product';
   document.getElementById('save-product-btn').textContent   = 'Update Product';
   adminTab('add-product');
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = e => reject(e);
+    reader.readAsDataURL(file);
+  });
 }
 
 async function saveProduct() {
@@ -2657,7 +2678,40 @@ async function saveProduct() {
 
   if(!name||!price) { showToast('Product name and price are required.','error'); return; }
 
-  const data = { name,code,category,brand,price,discountPrice:discount,stock,status,description:desc,tags,images:imgUrls,rating:0,reviewCount:0,dateAdded:new Date().toISOString() };
+  const fileInput = document.getElementById('p-images');
+  const files     = fileInput.files;
+  const uploadedUrls = [];
+
+  const btn = document.getElementById('save-product-btn');
+  const originalBtnText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Saving / Uploading...';
+
+  try {
+    if (files && files.length > 0) {
+      if (fbReady) {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const ref = storage.ref().child(`products/${Date.now()}_${file.name}`);
+          const snapshot = await ref.put(file);
+          const url = await snapshot.ref.getDownloadURL();
+          uploadedUrls.push(url);
+        }
+      } else {
+        // Fallback to data URL in demo mode
+        for (let i = 0; i < files.length; i++) {
+          const url = await fileToDataUrl(files[i]);
+          uploadedUrls.push(url);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Image upload failed', err);
+    showToast('Image upload failed. Saving product without new images.', 'error');
+  }
+
+  const finalImages = [...imgUrls, ...uploadedUrls];
+  const data = { name,code,category,brand,price,discountPrice:discount,stock,status,description:desc,tags,images:finalImages,rating:0,reviewCount:0,dateAdded:new Date().toISOString() };
 
   if(fbReady) {
     try {
@@ -2671,7 +2725,12 @@ async function saveProduct() {
         state.products.unshift({id:ref.id,...data});
         showToast('Product added!','success');
       }
-    } catch(e) { showToast('Error saving product.','error'); return; }
+    } catch(e) { 
+      showToast('Error saving product.','error'); 
+      btn.disabled = false;
+      btn.textContent = originalBtnText;
+      return; 
+    }
   } else {
     if(editId) {
       const idx = state.products.findIndex(p=>p.id===editId);
@@ -2681,6 +2740,9 @@ async function saveProduct() {
     }
     showToast(editId?'Product updated!':'Product added!','success');
   }
+
+  btn.disabled = false;
+  btn.textContent = originalBtnText;
 
   state.filteredProducts = [...state.products];
   renderProducts(state.filteredProducts);
@@ -2692,6 +2754,7 @@ async function saveProduct() {
 
 function resetProductForm() {
   ['p-name','p-code','p-category','p-brand','p-price','p-discount','p-stock','p-description','p-tags','p-image-urls'].forEach(id=>{ document.getElementById(id).value=''; });
+  document.getElementById('p-images').value = ''; // Reset file input
   document.getElementById('edit-product-id').value = '';
   document.getElementById('p-status').value = 'active';
   document.getElementById('image-preview').innerHTML = '';
